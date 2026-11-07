@@ -1,0 +1,5 @@
+- Comparaison de contenu
+- modulariser les comparaisons :
+    - comparateur par type de fichier
+    - pondération du comparateur
+    - labellisé le comparateur

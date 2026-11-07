@@ -54,12 +54,12 @@ public class Monitoring {
 		param.getFiles().add(rootDir);
 		
 		Ressemblance ressemblance = new Ressemblance(param);
-		List<Seem> seems = ressemblance.run();
+		List<ComparisonLine> comparisonLines = ressemblance.run();
 
-		for (Seem seem : seems) {
-			if (seem.getLevel() >= paramMonitoring.getOffset()) {
-				File file1 = (File)seem.getElement1();
-				File file2 = (File)seem.getElement2();
+		for (ComparisonLine comparisonLine : comparisonLines) {
+			if (comparisonLine.getLevel() >= paramMonitoring.getOffset()) {
+				File file1 = (File) comparisonLine.getElement1();
+				File file2 = (File) comparisonLine.getElement2();
 				
 				if (!file1.equals(file2) 
 						&& file1.exists() 

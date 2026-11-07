@@ -17,26 +17,23 @@ public class Ressemblance {
 		this.param = param;
 	}
 	
-	public List<Seem> run() {
-		
-		List<Seem> seems = new ArrayList<>();
-		
-		MessageDigest digest = initDigest();
-		ComparatorLevel<ZFile> comparator = initComparator(digest);
+	public List<ComparisonLine> run() {
+		List<ComparisonLine> result;
 		
 		List<File> dirs = param.getFiles();
-		
 		if (!dirs.isEmpty()) {
-			Set<ZFile> files = getFiles(dirs);
-			seems = process(files, comparator);
-			
-			Collections.sort(seems);
+			Set<ZFile> files = collecterFichiers(dirs);
+			MessageDigest digest = initDigest();
+			ComparatorLevel<ZFile> comparator = initComparator(digest);
+			result = process(files, comparator);
+			Collections.sort(result);
+		} else {
+			result = new ArrayList<>();
 		}
-		
-		return seems;
+		return result;
 	}
 	
-	private Set<ZFile> getFiles(List<File> rootDirs) {
+	private Set<ZFile> collecterFichiers(List<File> rootDirs) {
 		
 		Set<ZFile> files = new HashSet<>();
 
@@ -47,16 +44,16 @@ public class Ressemblance {
 		return files;
 	}
 	
-	private void addFiles(Set<ZFile> zfiles, File dir) {
+	private void addFiles(Set<ZFile> files, File dir) {
 		if (!dir.isDirectory()) return;
 		
 		File[] files0 = dir.listFiles();
 		if (files0 != null) {
 			for (File file : files0) {
 				if (file.isDirectory()) {
-					addFiles(zfiles, file);
+					addFiles(files, file);
 				} else {
-					zfiles.add(new ZFile(file));
+					files.add(new ZFile(file));
 				}
 			}
 		}
@@ -103,9 +100,9 @@ public class Ressemblance {
 		return (60 - x0) * (60 - x0) / 400; 
 	}
 	
-	private List<Seem> process(Set<ZFile> files0, ComparatorLevel<ZFile> comparator) {
+	private List<ComparisonLine> process(Set<ZFile> files0, ComparatorLevel<ZFile> comparator) {
 		
-		List<Seem> seems = new ArrayList<>();
+		List<ComparisonLine> comparisonLines = new ArrayList<>();
 		
 		List<ZFile> files = new ArrayList<>(files0);
 		
@@ -114,11 +111,11 @@ public class Ressemblance {
 			for (int m = n+1; m < files.size(); m++) {
 				ZFile f2 = files.get(m);
 				int level = comparator.compare(f1, f2);
-				if (level > 0) seems.add(new Seem(f1, f2, level));
+				if (level > 0) comparisonLines.add(new ComparisonLine(f1, f2, level));
 			}
 		}
 		
-		return seems;
+		return comparisonLines;
 	}
 	
     private MessageDigest initDigest() {
@@ -175,8 +172,6 @@ public class Ressemblance {
     private static String toHexString(byte[] block) {
         StringBuffer buf = new StringBuffer();
 
-        int len = block.length;
-
         for (byte b : block) {
             byte2hex(b, buf);
         }
@@ -195,34 +190,7 @@ public class Ressemblance {
         buf.append(hexChars[low]);
     }
 	
-	public static class ZFile extends File {
-		
-		private static final long serialVersionUID = 1L;
-		
-		private String imprint;
-		private List<String> words;
-		
-		private ZFile(File f) {
-			super(f.getAbsolutePath());
-		}
-		
-		public void setWords(List<String> words) {
-			this.words = words;
-		}
-		
-		public List<String> getWords() {
-			return words;
-		}
 
-		public void setImprint(String imprint) {
-			this.imprint = imprint;
-		}
-		
-		public String getImprint() {
-			return imprint;
-		}						
-	}
-	
 	public static class FileSizeFormater {
 
 	    private static final long[] CST_SIZE = {1024, 1024 * 1024, 1024 * 1024 * 1024};

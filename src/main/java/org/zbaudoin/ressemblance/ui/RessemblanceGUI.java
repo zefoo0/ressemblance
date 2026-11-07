@@ -7,9 +7,6 @@ import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Iterator;
 import java.util.List;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
@@ -34,7 +31,7 @@ import org.zbaudoin.ressemblance.dao.ParamDAO;
 import org.zbaudoin.ressemblance.dao.ParamDAO.RessourceParamException;
 import org.zbaudoin.ressemblance.model.ParamMonitoring;
 import org.zbaudoin.ressemblance.model.ParamRessemblance;
-import org.zbaudoin.ressemblance.model.Seem;
+import org.zbaudoin.ressemblance.model.ComparisonLine;
 import org.zbaudoin.ressemblance.service.Monitoring;
 import org.zbaudoin.ressemblance.service.Ressemblance;
 import org.zbaudoin.util.ui.ComponentUtil;
@@ -199,9 +196,9 @@ class RessemblanceGUI {
 				refreshParam();
 				try {
 					Ressemblance r = new Ressemblance(param);
-					List<Seem> seems = r.run();
-					if (!seems.isEmpty()) {
-						ResultGUI seemsUI = new ResultGUI(seems, param);
+					List<ComparisonLine> comparisonLines = r.run();
+					if (!comparisonLines.isEmpty()) {
+						ResultGUI seemsUI = new ResultGUI(comparisonLines, param);
 						seemsUI.show();
 					}
 				} catch (Exception e1) {

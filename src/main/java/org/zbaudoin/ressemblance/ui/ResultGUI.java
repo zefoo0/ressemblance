@@ -16,11 +16,11 @@ import org.zbaudoin.ressemblance.service.Ressemblance.*;
 public class ResultGUI {
 
 	private final ParamRessemblance param;
-	private final List<Seem> seems;
+	private final List<ComparisonLine> comparisonLines;
 	
-	public ResultGUI(final List<Seem> seems, ParamRessemblance param) {
+	public ResultGUI(final List<ComparisonLine> comparisonLines, ParamRessemblance param) {
 		this.param = param;
-		this.seems = seems;
+		this.comparisonLines = comparisonLines;
 	}
 	
 	public void show() {
@@ -33,17 +33,17 @@ public class ResultGUI {
 			@Override
 			public Object getValueAt(int rowIndex, int columnIndex) {
 				if (columnIndex == 0) {
-					return seems.get(rowIndex).getElement1();
+					return comparisonLines.get(rowIndex).getElement1();
 				}
 				if (columnIndex == 1) {
-					return seems.get(rowIndex).getElement2();
+					return comparisonLines.get(rowIndex).getElement2();
 				}
-				return seems.get(rowIndex).getLevel();
+				return comparisonLines.get(rowIndex).getLevel();
 			}
 			
 			@Override
 			public int getRowCount() {
-				return seems.size();
+				return comparisonLines.size();
 			}
 			
 			@Override
