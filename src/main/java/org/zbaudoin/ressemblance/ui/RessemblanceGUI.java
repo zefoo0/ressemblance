@@ -11,21 +11,8 @@ import java.util.List;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 
-import javax.swing.AbstractAction;
-import javax.swing.Action;
-import javax.swing.JFileChooser;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JMenu;
-import javax.swing.JMenuBar;
-import javax.swing.JPanel;
-import javax.swing.JPopupMenu;
+import javax.swing.*;
 import javax.swing.JPopupMenu.Separator;
-import javax.swing.JScrollPane;
-import javax.swing.JTextArea;
-import javax.swing.SwingConstants;
-import javax.swing.SwingUtilities;
-import javax.swing.WindowConstants;
 
 import org.zbaudoin.ressemblance.dao.ParamDAO;
 import org.zbaudoin.ressemblance.dao.ParamDAO.RessourceParamException;
@@ -67,7 +54,9 @@ class RessemblanceGUI {
 	private MonitoringConsoleGUI monitoringConsole;
 	
 	private final Preferences preferences;
-	
+
+	private final JTabbedPane tbPane;
+	private final ResultGUI result;
 	
 	RessemblanceGUI() {
 		
@@ -75,6 +64,8 @@ class RessemblanceGUI {
 		
 		param = new ParamRessemblance();
 		monitoring = new Monitoring(log);
+		tbPane = new JTabbedPane();
+		result = new ResultGUI();
 
 		initAction();
 		buildUI();
@@ -85,11 +76,6 @@ class RessemblanceGUI {
 	
 	private void initAction() {
 		actNew = new AbstractAction("New") {
-			/**
-			 * 
-			 */
-			private static final long serialVersionUID = 1L;
-
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				param = new ParamRessemblance();
@@ -98,11 +84,6 @@ class RessemblanceGUI {
 			}
 		};
 		actOpen = new AbstractAction("Open") {
-			/**
-			 * 
-			 */
-			private static final long serialVersionUID = 1L;
-
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				File file = chooseFileToOpen(fr);
@@ -116,11 +97,6 @@ class RessemblanceGUI {
 			}
 		};
 		actSave = new AbstractAction("Save") {
-			/**
-			 * 
-			 */
-			private static final long serialVersionUID = 1L;
-
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				refreshParam();
@@ -140,11 +116,6 @@ class RessemblanceGUI {
 		actSave.setEnabled(false);
 		
 		actSaveAs = new AbstractAction("Save as") {
-			/**
-			 * 
-			 */
-			private static final long serialVersionUID = 1L;
-
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				refreshParam();
@@ -159,11 +130,6 @@ class RessemblanceGUI {
 			}
 		};
 		actExit = new AbstractAction("Quit") {
-			/**
-			 * 
-			 */
-			private static final long serialVersionUID = 1L;
-
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				System.exit(0);
@@ -171,9 +137,6 @@ class RessemblanceGUI {
 		};
 		
 		actExplor = new AbstractAction("Add Directory") {
-			/**
-			 * 
-			 */
 			private static final long serialVersionUID = 1L;
 
 			@Override
@@ -186,10 +149,6 @@ class RessemblanceGUI {
 		};
 		
 		actRun = new AbstractAction("Run") {
-			/**
-			 * 
-			 */
-			private static final long serialVersionUID = 1L;
 
 			@Override
 			public void actionPerformed(ActionEvent e) {
@@ -198,8 +157,8 @@ class RessemblanceGUI {
 					Ressemblance r = new Ressemblance(param);
 					List<ComparisonLine> comparisonLines = r.run();
 					if (!comparisonLines.isEmpty()) {
-						ResultGUI seemsUI = new ResultGUI(comparisonLines, param);
-						seemsUI.show();
+						result.setComparisonLines(comparisonLines);
+						tbPane.setSelectedIndex(1);
 					}
 				} catch (Exception e1) {
 					showException(e1);
@@ -207,10 +166,6 @@ class RessemblanceGUI {
 			}
 		};		
 		actMonitorStart = new AbstractAction("Monitoring start") {
-			/**
-			 * 
-			 */
-			private static final long serialVersionUID = 1L;
 
 			@Override
 			public void actionPerformed(ActionEvent e) {
@@ -235,10 +190,6 @@ class RessemblanceGUI {
 		actMonitorStart.setEnabled(true);
 
 		actMonitorStop = new AbstractAction("Monitoring stop") {
-			/**
-			 * 
-			 */
-			private static final long serialVersionUID = 1L;
 
 			@Override
 			public void actionPerformed(ActionEvent e) {
@@ -284,22 +235,30 @@ class RessemblanceGUI {
 		menuRun.add(new Separator());
 		menuRun.add(actMonitorStart);
 		menuRun.add(actMonitorStop);
-		
+
 		fr.setJMenuBar(bar);
+		fr.getContentPane().add(tbPane, BorderLayout.CENTER);
+		tbPane.add("Paramètres", buildPaneParametre());
+		tbPane.add("Résultat", result.build());
+	}
+
+	private JPanel buildPaneParametre() {
+		JPanel paParam = new JPanel(new BorderLayout());
 
 		taSep = new JTextArea();
 		taExc = new JTextArea();
 		taExc.setPreferredSize(new Dimension(150, 100));
 		taFile = new JTextArea();
-		
-		fr.getContentPane().add(buildTextArea("Séparateurs", taSep, "Séparateurs utilisés pour " +
+
+		paParam.add(buildTextArea("Séparateurs", taSep, "Séparateurs utilisés pour " +
 				"découper les noms de fichiers en mots"), BorderLayout.WEST);
-		fr.getContentPane().add(buildTextArea("Dossiers racine",
+		paParam.add(buildTextArea("Dossiers racine",
 						taFile,	"Dossiers racine des fichiers à comparer", actExplor),
 				BorderLayout.CENTER);
-		fr.getContentPane().add(buildTextArea("Termes à exclure", taExc, "Termes à exclure de la comparaison"), BorderLayout.EAST);
+		paParam.add(buildTextArea("Termes à exclure", taExc, "Termes à exclure de la comparaison"), BorderLayout.EAST);
+		return paParam;
 	}
-	
+
 	private Container buildTextArea(String label, JTextArea ta, String toolTip, Action... actions) {
 		JPopupMenu pop = ComponentUtil.addMenuBasicUtilities(ta);
 		ComponentUtil.addUndoRedo(ta);

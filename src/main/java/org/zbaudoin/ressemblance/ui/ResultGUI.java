@@ -4,6 +4,7 @@ import java.awt.*;
 import java.awt.event.*;
 import java.io.*;
 import java.net.*;
+import java.util.ArrayList;
 import java.util.List;
 
 import javax.swing.*;
@@ -15,19 +16,13 @@ import org.zbaudoin.ressemblance.service.Ressemblance.*;
 
 public class ResultGUI {
 
-	private final ParamRessemblance param;
-	private final List<ComparisonLine> comparisonLines;
-	
-	public ResultGUI(final List<ComparisonLine> comparisonLines, ParamRessemblance param) {
-		this.param = param;
-		this.comparisonLines = comparisonLines;
-	}
-	
-	public void show() {
-		JFrame fr = new JFrame("Result");
-		fr.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
-		
-		TableModel model = new AbstractTableModel() {
+	private final AbstractTableModel model;
+	private List<ComparisonLine> comparisonLines;
+
+	public ResultGUI() {
+		this.comparisonLines = new ArrayList<>();
+
+		model = new AbstractTableModel() {
 			private static final long serialVersionUID = 1L;
 
 			@Override
@@ -40,12 +35,12 @@ public class ResultGUI {
 				}
 				return comparisonLines.get(rowIndex).getLevel();
 			}
-			
+
 			@Override
 			public int getRowCount() {
 				return comparisonLines.size();
 			}
-			
+
 			@Override
 			public int getColumnCount() {
 				return 3;
@@ -64,7 +59,14 @@ public class ResultGUI {
 				}
 			}
 		};
-				
+	}
+
+	public void setComparisonLines(List<ComparisonLine> comparisonLines) {
+		this.comparisonLines = comparisonLines;
+		model.fireTableDataChanged();
+	}
+
+	public JComponent build() {
 		final JTable ta = new JTable(model);
 		ta.getColumnModel().getColumn(2).setPreferredWidth(50);
 		ta.getColumnModel().getColumn(2).setWidth(50);
@@ -85,12 +87,7 @@ public class ResultGUI {
 		
 		initPopupMenu(ta);
 		
-		JScrollPane sc = new JScrollPane(ta);
-		fr.getContentPane().add(sc, BorderLayout.CENTER);
-
-		fr.setSize(800, 600);
-		fr.setLocationRelativeTo(null);
-		fr.setVisible(true);
+		return new JScrollPane(ta);
 	}
 	
 	private void initPopupMenu(final JTable ta) {
@@ -137,13 +134,13 @@ public class ResultGUI {
 			public void actionPerformed(ActionEvent e) {
 				File fSrc1 = (File)ta.getValueAt(ta.getSelectedRow(), 0);
 				File fSrc2 = (File)ta.getValueAt(ta.getSelectedRow(), 1);
-				
-				String tmp = param.getIsolateDirectory();
-				File f = new File(tmp + "/idem");
+
+				String tmp = System.getProperty("user.home");
+				File f = new File(tmp + "/.ressemblance");
 				f.mkdir();
 				if (!f.exists()) {
 					tmp = System.getProperty("java.io.tmpdir");
-					f = new File(tmp + "/idem");
+					f = new File(tmp + "/.ressemblance");
 					f.mkdir();
 				}
 

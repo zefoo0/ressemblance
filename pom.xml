@@ -10,6 +10,7 @@
 		<build.config>${basedir}/build-config</build.config>
 		<maven.compiler.source>11</maven.compiler.source>
 		<maven.compiler.target>11</maven.compiler.target>
+		<javacv.version>1.5.11</javacv.version>
 	</properties>
 
 	<dependencies>
@@ -23,6 +24,11 @@
 			<groupId>org.zbaudoin</groupId>
 			<artifactId>zutils</artifactId>
 			<version>1.0.0-SNAPSHOT</version>
+		</dependency>
+		<dependency>
+			<groupId>org.bytedeco</groupId>
+			<artifactId>javacv-platform</artifactId>
+			<version>${javacv.version}</version>
 		</dependency>
 	</dependencies>
 	<build>

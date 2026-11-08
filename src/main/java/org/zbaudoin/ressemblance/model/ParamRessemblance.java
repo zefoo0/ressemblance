@@ -10,8 +10,6 @@ public class ParamRessemblance implements Serializable, Cloneable {
 	private List<String> separators;
 	private List<File> files;
 	
-	private final static String isolateDirectory = "/tmp";
-	
 	public ParamRessemblance() {
 		excludes = new ArrayList<>();
 		separators = new ArrayList<>();
@@ -55,9 +53,6 @@ public class ParamRessemblance implements Serializable, Cloneable {
 	}
 	public void setFiles(List<File> files) {
 		this.files = files;
-	}
-	public String getIsolateDirectory() {
-		return isolateDirectory;
 	}
 
 	@Override
