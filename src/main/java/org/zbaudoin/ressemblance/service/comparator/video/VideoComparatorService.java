@@ -25,10 +25,6 @@ public class VideoComparatorService {
     private CompletionService<List<Long>> completedFingerprints;
     private volatile BooleanSupplier cancellationRequested = () -> false;
 
-    public void startCompare() {
-        startCompare(() -> false);
-    }
-
     public void startCompare(BooleanSupplier cancellationRequested) {
         fingerprints = new ConcurrentHashMap<>();
         this.cancellationRequested = cancellationRequested;

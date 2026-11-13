@@ -58,8 +58,8 @@ public class Monitoring {
 
 		for (ComparisonLine comparisonLine : comparisonLines) {
 			if (comparisonLine.getResult() != null && comparisonLine.getResult().getSimilarite() >= paramMonitoring.getOffset()) {
-				File file1 = (File) comparisonLine.getFile1();
-				File file2 = (File) comparisonLine.getFile2();
+				File file1 = comparisonLine.getFile1();
+				File file2 = comparisonLine.getFile2();
 				
 				if (!file1.equals(file2) 
 						&& file1.exists() 

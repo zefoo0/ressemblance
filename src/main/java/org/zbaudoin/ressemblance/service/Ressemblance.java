@@ -3,12 +3,9 @@ package org.zbaudoin.ressemblance.service;
 import java.io.*;
 import java.util.*;
 import java.util.concurrent.CancellationException;
-import java.util.function.BiConsumer;
 import java.util.function.BooleanSupplier;
-import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-import org.bytedeco.tesseract.PAGE_RES;
 import org.zbaudoin.ressemblance.model.*;
 import org.zbaudoin.ressemblance.model.Comparator;
 
@@ -82,7 +79,6 @@ public class Ressemblance {
 		}
 		Progress progres = new Progress(totalProgress, progressListener, cancellationRequested);
 
-		long completedProgress = 0;
 		for (Comparator comparator : param.getComparators()) {
 			checkCancellation(cancellationRequested);
 			ComparisonLines lines = lignesParComparaison.get(comparator);
@@ -142,7 +138,7 @@ public class Ressemblance {
 			String extension;
 			int index = fileName.lastIndexOf(".");
 			if (index != -1) {
-				extension = fileName.substring(index + 1, fileName.length());
+				extension = fileName.substring(index + 1);
 			} else {
 				extension = "";
 			}

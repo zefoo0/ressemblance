@@ -139,7 +139,7 @@ class ParamGUI {
         }
         return Arrays.stream(value.split(","))
                 .map(String::trim)
-                .allMatch(extension -> !extension.isEmpty());
+                .noneMatch(String::isEmpty);
     }
 
     private static boolean isValidCoefficient(String value) {

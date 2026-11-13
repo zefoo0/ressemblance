@@ -216,15 +216,14 @@ class RessemblanceGUI {
 		currectFile = file;
 		actSave.setEnabled(currectFile != null);
 		if (currectFile == null) {
-			fr.setTitle("Ressenblance");
+			fr.setTitle("Ressemblance");
 		} else {
-			fr.setTitle("Ressenblance : " + currectFile.getAbsolutePath());	
+			fr.setTitle("Ressemblance : " + currectFile.getAbsolutePath());
 		}
-		
 	}
 	
 	private void buildUI() {
-		fr = new JFrame("Ressenblance");
+		fr = new JFrame("Ressemblance");
 		fr.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
 		fr.addWindowListener(new WindowAdapter() {
 			@Override

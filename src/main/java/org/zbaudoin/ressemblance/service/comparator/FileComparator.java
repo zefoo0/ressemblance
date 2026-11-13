@@ -1,5 +1,6 @@
 package org.zbaudoin.ressemblance.service.comparator;
 
+import org.zbaudoin.ressemblance.model.ComparatorErrorException;
 import org.zbaudoin.ressemblance.model.ComparisonLine;
 import org.zbaudoin.ressemblance.model.ComparisonLines;
 import org.zbaudoin.ressemblance.service.Progress;
@@ -12,8 +13,6 @@ import java.security.NoSuchAlgorithmException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.BooleanSupplier;
-import java.util.function.Consumer;
 
 public class FileComparator extends AbstractComparator {
 
@@ -41,14 +40,18 @@ public class FileComparator extends AbstractComparator {
         for (ComparisonLine comparison : comparisons) {
             progress.checkCancellation();
             if (!comparison.isResultMax()) {
-                int valeur = compare(comparison.getFile1(), comparison.getFile2());
-                setResult(comparison, valeur);
+                try {
+                    int valeur = compare(comparison.getFile1(), comparison.getFile2());
+                    setResult(comparison, valeur);
+                } catch (ComparatorErrorException e) {
+                    addErreur(comparison, e);
+                }
             }
             progress.plus();
         }
     }
 
-    private int compare(File f1, File f2) {
+    private int compare(File f1, File f2) throws ComparatorErrorException {
         int result = 0;
         if (f1.length() == f2.length()) {
             try {
@@ -66,7 +69,7 @@ public class FileComparator extends AbstractComparator {
                     result = 100;
                 }
             } catch (IOException e) {
-                e.printStackTrace();
+                throw new ComparatorErrorException(e);
             }
         }
         return result;

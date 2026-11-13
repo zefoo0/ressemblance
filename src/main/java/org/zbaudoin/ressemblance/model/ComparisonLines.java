@@ -1,6 +1,5 @@
 package org.zbaudoin.ressemblance.model;
 
-import java.awt.*;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -13,13 +12,9 @@ public class ComparisonLines extends ArrayList<ComparisonLine> {
         super(init);
     }
 
-    public ComparisonLines excludeResultMax(ComparisonLines lines) {
-        return new ComparisonLines(lines.stream().filter(l -> !l.isResultMax()).collect(Collectors.toSet()));
-    }
-
     public Set<File> getAllFiles() {
-        Set<File> files = this.stream().map(c -> c.getFile1()).collect(Collectors.toSet());
-        files.addAll(this.stream().map(c -> c.getFile2()).collect(Collectors.toSet()));
+        Set<File> files = this.stream().map(ComparisonLine::getFile1).collect(Collectors.toSet());
+        files.addAll(this.stream().map(ComparisonLine::getFile2).collect(Collectors.toSet()));
         return files;
     }
 }

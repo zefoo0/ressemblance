@@ -82,7 +82,6 @@ public class ContenuVideoComparator extends AbstractComparator {
         } catch (CancellationException e) {
             throw e;
         } catch (Exception e) {
-            e.printStackTrace();
             throw new ComparatorErrorException(e);
         }
     }

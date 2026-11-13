@@ -2,10 +2,10 @@ package org.zbaudoin.ressemblance.service.comparator.video;
 
 class ComparisonResult {
 
-    double similarity;
-    int comparedFrames;
-    int matchingFrames;
-    int offsetSeconds;
+    final double similarity;
+    final int comparedFrames;
+    final int matchingFrames;
+    final int offsetSeconds;
 
     ComparisonResult(double similarity, int comparedFrames, int matchingFrames, int offsetSeconds) {
         this.similarity = similarity;

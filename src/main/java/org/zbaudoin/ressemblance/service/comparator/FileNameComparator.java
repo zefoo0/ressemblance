@@ -6,7 +6,6 @@ import org.zbaudoin.ressemblance.model.ComparisonLines;
 import org.zbaudoin.ressemblance.service.Progress;
 
 import java.io.File;
-import java.util.HashMap;
 import java.util.Set;
 
 public class FileNameComparator extends AbstractComparator {
