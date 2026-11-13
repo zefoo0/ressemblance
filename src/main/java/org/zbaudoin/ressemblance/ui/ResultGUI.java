@@ -3,38 +3,78 @@ package org.zbaudoin.ressemblance.ui;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.*;
-import java.net.*;
-import java.util.ArrayList;
+import java.util.*;
 import java.util.List;
+import java.util.function.Consumer;
 
 import javax.swing.*;
+import javax.swing.event.*;
 import javax.swing.table.*;
 
 import org.zbaudoin.ressemblance.model.*;
 
-
 public class ResultGUI {
+	private static final String[] COLUMN_IDS = {
+			ResultTableState.FILE1, ResultTableState.FILE2, ResultTableState.SCORE,
+			ResultTableState.NAME1, ResultTableState.NAME2, ResultTableState.PARENT1,
+			ResultTableState.PARENT2, ResultTableState.SIZE1, ResultTableState.SIZE2,
+			ResultTableState.RESULT_COMPARATOR, ResultTableState.ERROR_COMPARATORS
+	};
+	private static final String[] COLUMN_NAMES = {
+			"Fichier 1", "Fichier 2", "Score", "Nom 1", "Nom 2", "Parent 1",
+			"Parent 2", "Taille 1", "Taille 2", "Comparaison retenue", "Comparaisons en erreur"
+	};
 
 	private final AbstractTableModel model;
 	private List<ComparisonLine> comparisonLines;
+	private JTable table;
+	private TableRowSorter<AbstractTableModel> sorter;
+	private Map<String, TableColumn> columns;
+	private ResultTableState tableState;
+	private Consumer<ResultTableState> onTableStateChange;
+	private boolean restoringState;
 
 	public ResultGUI() {
-		this.comparisonLines = new ArrayList<>();
-
+		comparisonLines = new ArrayList<>();
+		tableState = new ResultTableState();
 		model = new AbstractTableModel() {
 			private static final long serialVersionUID = 1L;
 
 			@Override
 			public Object getValueAt(int rowIndex, int columnIndex) {
-				if (columnIndex == 0) {
-					return comparisonLines.get(rowIndex).getFile1();
+				ComparisonLine line = comparisonLines.get(rowIndex);
+				File file1 = line.getFile1();
+				File file2 = line.getFile2();
+				switch (COLUMN_IDS[columnIndex]) {
+					case ResultTableState.FILE1:
+						return file1;
+					case ResultTableState.FILE2:
+						return file2;
+					case ResultTableState.SCORE:
+						return line.getResult() == null ? -1 : line.getResult().getSimilarite();
+					case ResultTableState.NAME1:
+						return file1.getName();
+					case ResultTableState.NAME2:
+						return file2.getName();
+					case ResultTableState.PARENT1:
+						return parentName(file1);
+					case ResultTableState.PARENT2:
+						return parentName(file2);
+					case ResultTableState.SIZE1:
+						return file1.length();
+					case ResultTableState.SIZE2:
+						return file2.length();
+					case ResultTableState.RESULT_COMPARATOR:
+						return line.getResult() == null ? "" : line.getResult().getComparator().getLibelle();
+					case ResultTableState.ERROR_COMPARATORS:
+						StringJoiner labels = new StringJoiner(", ");
+						for (ComparisonLineError error : line.getErreurs()) {
+							labels.add(error.getComparator().getLibelle());
+						}
+						return labels.toString();
+					default:
+						throw new IllegalStateException("Unknown result column: " + COLUMN_IDS[columnIndex]);
 				}
-				if (columnIndex == 1) {
-					return comparisonLines.get(rowIndex).getFile2();
-				}
-				ComparisonLineResult result = comparisonLines.get(rowIndex).getResult();
-				return result == null ? -1 :
-						result.getSimilarite();
 			}
 
 			@Override
@@ -44,22 +84,71 @@ public class ResultGUI {
 
 			@Override
 			public int getColumnCount() {
-				return 3;
+				return COLUMN_IDS.length;
 			}
 
 			@Override
 			public String getColumnName(int column) {
-				if (column == 0) {
-					return "Fichier 1";
-				} else if (column == 1) {
-					return "Fichier 2";
-				} else if (column == 2) {
-					return "Score";
-				} else {
-					throw new IllegalStateException();
+				return COLUMN_NAMES[column];
+			}
+
+			@Override
+			public Class<?> getColumnClass(int columnIndex) {
+				switch (COLUMN_IDS[columnIndex]) {
+					case ResultTableState.FILE1:
+					case ResultTableState.FILE2:
+						return File.class;
+					case ResultTableState.SCORE:
+						return Integer.class;
+					case ResultTableState.SIZE1:
+					case ResultTableState.SIZE2:
+						return Long.class;
+					default:
+						return String.class;
 				}
 			}
 		};
+	}
+
+	public void setOnTableStateChange(Consumer<ResultTableState> onTableStateChange) {
+		this.onTableStateChange = onTableStateChange;
+	}
+
+	public void setTableState(ResultTableState state) {
+		tableState = normalizeState(state);
+		if (table == null) {
+			return;
+		}
+
+		restoringState = true;
+		try {
+			sorter.setSortKeys(Collections.emptyList());
+			while (table.getColumnModel().getColumnCount() > 0) {
+				table.removeColumn(table.getColumnModel().getColumn(0));
+			}
+			for (Map.Entry<String, Integer> entry : tableState.getColumnWidths().entrySet()) {
+				TableColumn column = columns.get(entry.getKey());
+				if (column != null && entry.getValue() != null && entry.getValue() > 0) {
+					column.setPreferredWidth(entry.getValue());
+					column.setWidth(entry.getValue());
+				}
+			}
+			Set<String> visible = new HashSet<>(tableState.getVisibleColumns());
+			for (String id : tableState.getColumnOrder()) {
+				if (visible.contains(id)) {
+					table.addColumn(columns.get(id));
+				}
+			}
+			if (tableState.getSortColumn() != null) {
+				int sortIndex = columnIndex(tableState.getSortColumn());
+				if (sortIndex >= 0) {
+					SortOrder order = tableState.isSortAscending() ? SortOrder.ASCENDING : SortOrder.DESCENDING;
+					sorter.setSortKeys(Collections.singletonList(new RowSorter.SortKey(sortIndex, order)));
+				}
+			}
+		} finally {
+			restoringState = false;
+		}
 	}
 
 	public void setComparisonLines(List<ComparisonLine> comparisonLines) {
@@ -68,175 +157,461 @@ public class ResultGUI {
 	}
 
 	public JComponent build() {
-		final JTable ta = new JTable(model);
-		ta.getColumnModel().getColumn(2).setPreferredWidth(50);
-		ta.getColumnModel().getColumn(2).setWidth(50);
-		ta.getColumnModel().getColumn(2).setMaxWidth(50);
-		ta.addMouseListener(new MouseAdapter() {
-			
+		table = new JTable(model);
+		table.setAutoCreateColumnsFromModel(false);
+		table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+		columns = new LinkedHashMap<>();
+		for (int i = 0; i < COLUMN_IDS.length; i++) {
+			TableColumn column = table.getColumnModel().getColumn(i);
+			column.setIdentifier(COLUMN_IDS[i]);
+			columns.put(COLUMN_IDS[i], column);
+		}
+
+		sorter = new TableRowSorter<>(model);
+		sorter.setMaxSortKeys(1);
+		sorter.setComparator(columnIndex(ResultTableState.FILE1),
+				java.util.Comparator.comparing(file -> ((File) file).getAbsolutePath()));
+		sorter.setComparator(columnIndex(ResultTableState.FILE2),
+				java.util.Comparator.comparing(file -> ((File) file).getAbsolutePath()));
+		table.setRowSorter(sorter);
+		table.getColumnModel().getColumn(columnIndex(ResultTableState.SCORE))
+				.setPreferredWidth(50);
+		table.getColumnModel().getColumn(columnIndex(ResultTableState.SCORE)).setMaxWidth(50);
+		DefaultTableCellRenderer sizeRenderer = new DefaultTableCellRenderer() {
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			protected void setValue(Object value) {
+				setText(value == null ? "" : FileSizeFormater.format((Long) value));
+			}
+		};
+		sizeRenderer.setHorizontalAlignment(SwingConstants.RIGHT);
+		for (String id : Arrays.asList(ResultTableState.SIZE1, ResultTableState.SIZE2)) {
+			table.getColumnModel().getColumn(columnIndex(id)).setCellRenderer(sizeRenderer);
+		}
+
+		table.getColumnModel().addColumnModelListener(new TableColumnModelListener() {
+			@Override
+			public void columnAdded(TableColumnModelEvent e) { }
+
+			@Override
+			public void columnRemoved(TableColumnModelEvent e) { }
+
+			@Override
+			public void columnMoved(TableColumnModelEvent e) {
+				if (!restoringState && e.getFromIndex() != e.getToIndex()) {
+					persistCurrentState();
+				}
+			}
+
+			@Override
+			public void columnMarginChanged(ChangeEvent e) {
+				if (!restoringState) {
+					persistCurrentState();
+				}
+			}
+
+			@Override
+			public void columnSelectionChanged(ListSelectionEvent e) { }
+		});
+		sorter.addRowSorterListener(e -> {
+			if (!restoringState) {
+				persistCurrentState();
+			}
+		});
+
+		table.getTableHeader().setComponentPopupMenu(createColumnsPopup());
+		table.addMouseListener(new MouseAdapter() {
 			@Override
 			public void mouseReleased(MouseEvent e) {
 				if (e.getButton() == MouseEvent.BUTTON3) {
-					Point p=e.getPoint();
-	                int row=ta.rowAtPoint(p);
-	                int col = ta.columnAtPoint(p);
-	                if (! ta.isRowSelected(row)) ta.changeSelection(row, col, false, false);
+					Point point = e.getPoint();
+					int row = table.rowAtPoint(point);
+					int column = table.columnAtPoint(point);
+					if (row >= 0 && column >= 0 && !table.isRowSelected(row)) {
+						table.changeSelection(row, column, false, false);
+					}
+				}
+			}
+
+			@Override
+			public void mouseClicked(MouseEvent e) {
+				int row = table.rowAtPoint(e.getPoint());
+				int column = table.columnAtPoint(e.getPoint());
+				if (e.getClickCount() == 2 && row >= 0 && column >= 0
+						&& ResultTableState.ERROR_COMPARATORS.equals(
+								table.getColumnModel().getColumn(column).getIdentifier())) {
+					showComparisonErrors(row);
 				}
 			}
 		});
-		ta.setAutoCreateRowSorter(true);
-		
-		initPopupMenu(ta);
-		
-		return new JScrollPane(ta);
+		initPopupMenu(table);
+		setTableState(tableState);
+		return new JScrollPane(table);
 	}
-	
+
+	private JPopupMenu createColumnsPopup() {
+		JPopupMenu popup = new JPopupMenu();
+		for (int i = 0; i < COLUMN_IDS.length; i++) {
+			String id = COLUMN_IDS[i];
+			JCheckBoxMenuItem item = new JCheckBoxMenuItem(COLUMN_NAMES[i]);
+			item.addActionListener(e -> setColumnVisible(id, item.isSelected()));
+			popup.add(item);
+		}
+		popup.addPopupMenuListener(new javax.swing.event.PopupMenuListener() {
+			@Override
+			public void popupMenuWillBecomeVisible(javax.swing.event.PopupMenuEvent e) {
+				Set<String> visible = new HashSet<>(getVisibleColumnIds());
+				for (int i = 0; i < popup.getComponentCount(); i++) {
+					JCheckBoxMenuItem item = (JCheckBoxMenuItem) popup.getComponent(i);
+					item.setSelected(visible.contains(COLUMN_IDS[i]));
+				}
+			}
+
+			@Override
+			public void popupMenuWillBecomeInvisible(javax.swing.event.PopupMenuEvent e) { }
+
+			@Override
+			public void popupMenuCanceled(javax.swing.event.PopupMenuEvent e) { }
+		});
+		return popup;
+	}
+
+	private void setColumnVisible(String id, boolean visible) {
+		boolean currentlyVisible = getVisibleColumnIds().contains(id);
+		if (visible == currentlyVisible) {
+			return;
+		}
+		if (!visible && table.getColumnModel().getColumnCount() <= 1) {
+			return;
+		}
+		if (visible) {
+			table.addColumn(columns.get(id));
+			int targetIndex = 0;
+			for (String orderedId : tableState.getColumnOrder()) {
+				if (orderedId.equals(id)) {
+					break;
+				}
+				if (currentlyVisible(orderedId)) {
+					targetIndex++;
+				}
+			}
+			int lastIndex = table.getColumnModel().getColumnCount() - 1;
+			if (targetIndex < lastIndex) {
+				table.moveColumn(lastIndex, targetIndex);
+			}
+		} else {
+			table.removeColumn(columns.get(id));
+		}
+		persistCurrentState();
+	}
+
+	private boolean currentlyVisible(String id) {
+		return getVisibleColumnIds().contains(id);
+	}
+
+	private List<String> getVisibleColumnIds() {
+		List<String> visible = new ArrayList<>();
+		if (table != null) {
+			for (int i = 0; i < table.getColumnModel().getColumnCount(); i++) {
+				visible.add(String.valueOf(table.getColumnModel().getColumn(i).getIdentifier()));
+			}
+		}
+		return visible;
+	}
+
+	private void persistCurrentState() {
+		if (restoringState) {
+			return;
+		}
+		ResultTableState updated = captureState();
+		if (!updated.equals(tableState)) {
+			tableState = updated;
+			if (onTableStateChange != null) {
+				onTableStateChange.accept(updated.copy());
+			}
+		}
+	}
+
+	private ResultTableState captureState() {
+		ResultTableState result = new ResultTableState();
+		List<String> order = new ArrayList<>(tableState.getColumnOrder());
+		List<String> visible = getVisibleColumnIds();
+		Set<String> visibleSet = new HashSet<>(visible);
+		int visibleIndex = 0;
+		for (int i = 0; i < order.size(); i++) {
+			if (visibleSet.contains(order.get(i))) {
+				order.set(i, visible.get(visibleIndex++));
+			}
+		}
+		result.setColumnOrder(order);
+		List<String> visibleInOrder = new ArrayList<>();
+		for (String id : order) {
+			if (visibleSet.contains(id)) {
+				visibleInOrder.add(id);
+			}
+		}
+		result.setVisibleColumns(visibleInOrder);
+		Map<String, Integer> widths = new LinkedHashMap<>();
+		for (Map.Entry<String, TableColumn> entry : columns.entrySet()) {
+			widths.put(entry.getKey(), entry.getValue().getWidth());
+		}
+		result.setColumnWidths(widths);
+		List<? extends RowSorter.SortKey> sortKeys = sorter.getSortKeys();
+		if (!sortKeys.isEmpty()) {
+			RowSorter.SortKey key = sortKeys.get(0);
+			result.setSortColumn(COLUMN_IDS[key.getColumn()]);
+			result.setSortAscending(key.getSortOrder() != SortOrder.DESCENDING);
+		}
+		return result;
+	}
+
+	private ResultTableState normalizeState(ResultTableState state) {
+		ResultTableState normalized = new ResultTableState();
+		List<String> order = new ArrayList<>();
+		if (state != null && state.getColumnOrder() != null) {
+			for (String id : state.getColumnOrder()) {
+				if (columnIndex(id) >= 0 && !order.contains(id)) {
+					order.add(id);
+				}
+			}
+		}
+		for (String id : COLUMN_IDS) {
+			if (!order.contains(id)) {
+				order.add(id);
+			}
+		}
+		Set<String> requestedVisible = new HashSet<>();
+		if (state != null && state.getVisibleColumns() != null) {
+			for (String id : state.getVisibleColumns()) {
+				if (columnIndex(id) >= 0) {
+					requestedVisible.add(id);
+				}
+			}
+		} else {
+			requestedVisible.addAll(Arrays.asList(COLUMN_IDS));
+		}
+		List<String> visible = new ArrayList<>();
+		for (String id : order) {
+			if (requestedVisible.contains(id)) {
+				visible.add(id);
+			}
+		}
+		if (visible.isEmpty()) {
+			visible.add(ResultTableState.FILE1);
+		}
+		normalized.setColumnOrder(order);
+		normalized.setVisibleColumns(visible);
+		Map<String, Integer> widths = new LinkedHashMap<>(new ResultTableState().getColumnWidths());
+		if (state != null && state.getColumnWidths() != null) {
+			for (Map.Entry<String, Integer> entry : state.getColumnWidths().entrySet()) {
+				if (columnIndex(entry.getKey()) >= 0 && entry.getValue() != null && entry.getValue() > 0) {
+					widths.put(entry.getKey(), entry.getValue());
+				}
+			}
+		}
+		normalized.setColumnWidths(widths);
+		if (state != null && columnIndex(state.getSortColumn()) >= 0) {
+			normalized.setSortColumn(state.getSortColumn());
+			normalized.setSortAscending(state.isSortAscending());
+		}
+		return normalized;
+	}
+
+	private static int columnIndex(String id) {
+		for (int i = 0; i < COLUMN_IDS.length; i++) {
+			if (COLUMN_IDS[i].equals(id)) {
+				return i;
+			}
+		}
+		return -1;
+	}
+
+	private static String parentName(File file) {
+		File parent = file.getParentFile();
+		return parent == null ? "" : parent.getName();
+	}
+
 	private void initPopupMenu(final JTable ta) {
-		
-		JPopupMenu pop = new JPopupMenu();
-		pop.add(new AbstractAction("Run") {
+		JPopupMenu popup = new JPopupMenu();
+		popup.add(new AbstractAction("Run") {
 			private static final long serialVersionUID = 1L;
 
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				Object o = ta.getValueAt(ta.getSelectedRow(), ta.getSelectedColumn());
-				if (o instanceof File) {
+				File file = getSelectedFile(ta);
+				if (file != null) {
 					try {
-						Desktop.getDesktop().open((File)o);
-					} catch (IOException e1) {
-						e1.printStackTrace();
+						Desktop.getDesktop().open(file);
+					} catch (IOException ex) {
+						ex.printStackTrace();
 					}
 				}
 			}
 		});
-		
-		pop.add(new AbstractAction("Open Directory") {
+
+		popup.add(new AbstractAction("Open Directory") {
 			private static final long serialVersionUID = 1L;
 
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				Object o = ta.getValueAt(ta.getSelectedRow(), ta.getSelectedColumn());
-				if (o instanceof File) {
+				File file = getSelectedFile(ta);
+				if (file != null && file.getParentFile() != null) {
 					try {
-						File f = (File)o;
-						URI u = new URI("file://" + f.getParentFile().getAbsolutePath());
-						Desktop.getDesktop().browse(u);
-					} catch (IOException | URISyntaxException e1) {
-						e1.printStackTrace();
+						Desktop.getDesktop().browse(file.getParentFile().toURI());
+					} catch (IOException ex) {
+						ex.printStackTrace();
 					}
-                }
+				}
 			}
 		});
 
-		pop.add(new AbstractAction("Isolate") {
+		popup.add(new AbstractAction("Isolate") {
 			private static final long serialVersionUID = 1L;
 
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				File fSrc1 = (File)ta.getValueAt(ta.getSelectedRow(), 0);
-				File fSrc2 = (File)ta.getValueAt(ta.getSelectedRow(), 1);
-
-				String tmp = System.getProperty("user.home");
-				File f = new File(tmp + "/.ressemblance");
-				f.mkdir();
-				if (!f.exists()) {
-					tmp = System.getProperty("java.io.tmpdir");
-					f = new File(tmp + "/.ressemblance");
-					f.mkdir();
+				int row = ta.getSelectedRow();
+				if (row >= 0) {
+					isolate(getFileAtViewRow(ta, row, ResultTableState.FILE1),
+							getFileAtViewRow(ta, row, ResultTableState.FILE2));
 				}
-
-				File fTar1 = new File(f, "1_" + fSrc1.getName());
-				File fTar2 = new File(f, "2_" + fSrc2.getName());
-				
-				try {
-					ProcessBuilder bp = new ProcessBuilder("ln", "-s", fSrc1.getAbsolutePath(), fTar1.getAbsolutePath());
-					bp.start();
-					
-					bp = new ProcessBuilder("ln", "-s", fSrc2.getAbsolutePath(), fTar2.getAbsolutePath());
-					bp.start();
-
-				} catch (IOException e2) {
-					e2.printStackTrace();
-				}
-
-				try {
-					URI u = new URI("file://" + f.getAbsolutePath());
-					Desktop.getDesktop().browse(u);
-				} catch (IOException | URISyntaxException e1) {
-					e1.printStackTrace();
-				}
-
-                JRadioButton rb1 = new JRadioButton(fTar1.getName());
-				rb1.setToolTipText(fSrc1.getAbsolutePath() + "(" + FileSizeFormater.format(fSrc1.length()) + ")");
-		        JRadioButton rb2 = new JRadioButton(fTar2.getName());
-		        rb2.setToolTipText(fSrc2.getAbsolutePath() + "(" + FileSizeFormater.format(fSrc2.length()) + ")");
-		        ButtonGroup group = new ButtonGroup();
-		        group.add(rb1);
-		        group.add(rb2);
-		        JPanel radioPanel = new JPanel(new GridLayout(0, 1));
-		        radioPanel.add(rb1);
-		        radioPanel.add(rb2);
-				
-				int res = JOptionPane.showConfirmDialog(null, radioPanel, "Delete files ?", JOptionPane.OK_CANCEL_OPTION);
-				if (res == JOptionPane.OK_OPTION) {
-					if (rb1.isSelected()) {
-						fSrc1.delete();
-					} else if (rb2.isSelected()) {
-						fSrc2.delete();
-					}
-				}
-				
-				fTar1.delete();
-				fTar2.delete();
-				f.delete();
 			}
 		});
-		
-		pop.add(new AbstractAction("Delete file 1") {
+
+		popup.add(new AbstractAction("Afficher les erreurs") {
 			private static final long serialVersionUID = 1L;
 
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				int[] indices = ta.getSelectedRows();
-				if (indices.length > 0) {
-					File example = (File)ta.getValueAt(indices[0], 0);
-					
-					int res = JOptionPane.showConfirmDialog(null, 
-							"Êtes-vous sur de supprimer " + indices.length + " fichiers ?\n" + example.getAbsolutePath() + " ...", 
-							"Delete files A ?", JOptionPane.OK_CANCEL_OPTION);
-					if (res == JOptionPane.OK_OPTION) {
-						for (int i : indices) {
-							File file = (File)ta.getValueAt(i, 0);
-							file.delete();
-						}
-						JOptionPane.showMessageDialog(null, "Opération terminée");
-					}
+				if (ta.getSelectedRow() >= 0) {
+					showComparisonErrors(ta.getSelectedRow());
 				}
 			}
 		});
 
-		pop.add(new AbstractAction("Delete file 2") {
+		popup.add(new AbstractAction("Delete file 1") {
 			private static final long serialVersionUID = 1L;
 
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				int[] indices = ta.getSelectedRows();
-				if (indices.length > 0) {
-					File example = (File)ta.getValueAt(indices[0], 1);
-					int res = JOptionPane.showConfirmDialog(null, 
-							"Êtes-vous sur de supprimer " + indices.length + " fichiers ?\n" + example.getAbsolutePath() + " ...", 
-							"Delete files B ?", JOptionPane.OK_CANCEL_OPTION);
-					if (res == JOptionPane.OK_OPTION) {
-						for (int i : indices) {
-							File file = (File)ta.getValueAt(i, 1);
-							file.delete();
-						}
-						JOptionPane.showMessageDialog(null, "Opération terminée");
-					}
-				}
+				deleteSelectedFiles(ta, ResultTableState.FILE1, "Delete files A ?");
 			}
 		});
+		popup.add(new AbstractAction("Delete file 2") {
+			private static final long serialVersionUID = 1L;
 
-		ta.setComponentPopupMenu(pop);
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				deleteSelectedFiles(ta, ResultTableState.FILE2, "Delete files B ?");
+			}
+		});
+		ta.setComponentPopupMenu(popup);
+	}
+
+	private File getSelectedFile(JTable ta) {
+		int row = ta.getSelectedRow();
+		int column = ta.getSelectedColumn();
+		if (row < 0 || column < 0) {
+			return null;
+		}
+		int modelColumn = ta.convertColumnIndexToModel(column);
+		Object value = model.getValueAt(ta.convertRowIndexToModel(row), modelColumn);
+		return value instanceof File ? (File) value : null;
+	}
+
+	private File getFileAtViewRow(JTable ta, int viewRow, String id) {
+		Object value = model.getValueAt(ta.convertRowIndexToModel(viewRow), columnIndex(id));
+		return value instanceof File ? (File) value : null;
+	}
+
+	private void deleteSelectedFiles(JTable ta, String fileColumn, String title) {
+		int[] rows = ta.getSelectedRows();
+		if (rows.length == 0) {
+			return;
+		}
+		File example = getFileAtViewRow(ta, rows[0], fileColumn);
+		int result = JOptionPane.showConfirmDialog(null,
+				"Êtes-vous sur de supprimer " + rows.length + " fichiers ?\n"
+						+ example.getAbsolutePath() + " ...",
+				title, JOptionPane.OK_CANCEL_OPTION);
+		if (result == JOptionPane.OK_OPTION) {
+			for (int row : rows) {
+				getFileAtViewRow(ta, row, fileColumn).delete();
+			}
+			JOptionPane.showMessageDialog(null, "Opération terminée");
+		}
+	}
+
+	private void showComparisonErrors(int viewRow) {
+		ComparisonLine line = comparisonLines.get(table.convertRowIndexToModel(viewRow));
+		if (line.getErreurs().isEmpty()) {
+			return;
+		}
+		StringWriter text = new StringWriter();
+		PrintWriter writer = new PrintWriter(text);
+		for (ComparisonLineError error : line.getErreurs()) {
+			writer.println("Comparaison : " + error.getComparator().getLibelle());
+			error.getException().printStackTrace(writer);
+			writer.println();
+		}
+		writer.flush();
+
+		JTextArea details = new JTextArea(text.toString(), 20, 80);
+		details.setEditable(false);
+		details.setCaretPosition(0);
+		JOptionPane.showMessageDialog(table, new JScrollPane(details),
+				"Erreurs de comparaison", JOptionPane.ERROR_MESSAGE);
+	}
+
+	private void isolate(File file1, File file2) {
+		if (file1 == null || file2 == null) {
+			return;
+		}
+		String tmp = System.getProperty("user.home");
+		File directory = new File(tmp + "/.ressemblance");
+		directory.mkdir();
+		if (!directory.exists()) {
+			tmp = System.getProperty("java.io.tmpdir");
+			directory = new File(tmp + "/.ressemblance");
+			directory.mkdir();
+		}
+
+		File link1 = new File(directory, "1_" + file1.getName());
+		File link2 = new File(directory, "2_" + file2.getName());
+		try {
+			new ProcessBuilder("ln", "-s", file1.getAbsolutePath(), link1.getAbsolutePath()).start();
+			new ProcessBuilder("ln", "-s", file2.getAbsolutePath(), link2.getAbsolutePath()).start();
+		} catch (IOException ex) {
+			ex.printStackTrace();
+		}
+		try {
+			Desktop.getDesktop().browse(directory.toURI());
+		} catch (IOException ex) {
+			ex.printStackTrace();
+		}
+
+		JRadioButton rb1 = new JRadioButton(link1.getName());
+		rb1.setToolTipText(file1.getAbsolutePath() + "(" + FileSizeFormater.format(file1.length()) + ")");
+		JRadioButton rb2 = new JRadioButton(link2.getName());
+		rb2.setToolTipText(file2.getAbsolutePath() + "(" + FileSizeFormater.format(file2.length()) + ")");
+		ButtonGroup group = new ButtonGroup();
+		group.add(rb1);
+		group.add(rb2);
+		JPanel radioPanel = new JPanel(new GridLayout(0, 1));
+		radioPanel.add(rb1);
+		radioPanel.add(rb2);
+
+		int result = JOptionPane.showConfirmDialog(null, radioPanel, "Delete files ?", JOptionPane.OK_CANCEL_OPTION);
+		if (result == JOptionPane.OK_OPTION) {
+			if (rb1.isSelected()) {
+				file1.delete();
+			} else if (rb2.isSelected()) {
+				file2.delete();
+			}
+		}
+		link1.delete();
+		link2.delete();
+		directory.delete();
 	}
 }

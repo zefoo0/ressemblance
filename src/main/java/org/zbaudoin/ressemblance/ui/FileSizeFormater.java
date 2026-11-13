@@ -4,23 +4,18 @@ import java.text.DecimalFormat;
 
 class FileSizeFormater {
 
-	    private static final long[] CST_SIZE = {1024, 1024 * 1024, 1024 * 1024 * 1024};
-	    private static final String[] CST_UNITS = {"Ko", "Mo", "Go"};
+	private static final String[] UNITS = {"o", "Ko", "Mo", "Go", "To", "Po", "Eo"};
 
-	    public static String format(final long value) {
-	        String result = null;
-	        long size;
-	        for (int i = 0; i < 3; i++) {
-	            size=value / CST_SIZE[i];
-	            if (size <= 1024) {
-	                result = mergeUnit(size, CST_UNITS[i]);
-	                break;
-	            }
-	        }
-	        return result;
-	    }
-
-	    public static String mergeUnit(long size, String unit) {
-	        return new DecimalFormat("#,##0.#").format(size) + " " + unit;
-	    }
+	public static String format(final long value) {
+		if (value < 1024) {
+			return value + " o";
+		}
+		double size = value;
+		int unit = 0;
+		while (size >= 1024 && unit < UNITS.length - 1) {
+			size /= 1024;
+			unit++;
+		}
+		return new DecimalFormat("#,##0.#").format(size) + " " + UNITS[unit];
 	}
+}

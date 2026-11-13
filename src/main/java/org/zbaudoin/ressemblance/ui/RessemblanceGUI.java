@@ -70,6 +70,10 @@ class RessemblanceGUI {
 		paramGUI =  new ParamGUI();
 
 		paramGUI.setOnChange(this::scheduleSessionSave);
+		resultGUI.setOnTableStateChange(state -> {
+			param.setResultTableState(state);
+			scheduleSessionSave();
+		});
 		initAction();
 		buildUI();
 		try {
@@ -339,6 +343,7 @@ class RessemblanceGUI {
 
 	private void refreshUI() {
 		paramGUI.refreshUI(param);
+		resultGUI.setTableState(param.getResultTableState());
 	}
 
 	private void refreshParam() {

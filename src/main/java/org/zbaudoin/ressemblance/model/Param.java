@@ -12,6 +12,7 @@ public class Param implements Serializable, Cloneable {
 
 	private List<Comparator> comparators;
 	private List<File> files;
+	private ResultTableState resultTableState = new ResultTableState();
 	
 	public Param() {
 		comparators = Arrays.asList(new FileComparator(),
@@ -35,6 +36,14 @@ public class Param implements Serializable, Cloneable {
 		this.files = files;
 	}
 
+	public ResultTableState getResultTableState() {
+		return resultTableState;
+	}
+
+	public void setResultTableState(ResultTableState resultTableState) {
+		this.resultTableState = resultTableState;
+	}
+
 	@Override
 	public Param clone() {
 		try {
@@ -49,6 +58,7 @@ public class Param implements Serializable, Cloneable {
 		return new StringJoiner(", ", Param.class.getSimpleName() + "[", "]")
 				.add("comparators=" + comparators)
 				.add("files=" + files)
+				.add("resultTableState=" + resultTableState)
 				.toString();
 	}
 }
