@@ -30,6 +30,22 @@ public class ParamDAO {
 			throw new RessourceParamException(e);
 		}
 	}
+
+	public static String toJson(Param param) throws RessourceParamException {
+		try {
+			return MAPPER.writeValueAsString(param);
+		} catch (IOException e) {
+			throw new RessourceParamException(e);
+		}
+	}
+
+	public static Param fromJson(String json) throws RessourceParamException {
+		try {
+			return MAPPER.readValue(json, Param.class);
+		} catch (IOException e) {
+			throw new RessourceParamException(e);
+		}
+	}
 	
 	public Param load() throws RessourceParamException {
 		try (BufferedInputStream input = new BufferedInputStream(Files.newInputStream(file.toPath()))) {

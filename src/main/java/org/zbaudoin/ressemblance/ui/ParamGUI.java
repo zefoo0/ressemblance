@@ -4,6 +4,8 @@ import org.zbaudoin.ressemblance.model.Param;
 import org.zbaudoin.util.ui.ComponentUtil;
 
 import javax.swing.*;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.io.File;
@@ -15,6 +17,8 @@ class ParamGUI {
     private Action actDirectory;
     private JTextArea taFile;
     private JFileChooser fcDir;
+    private Runnable onChange;
+    private boolean updating;
 
     JPanel build() {
         JPanel paParam = new JPanel(new BorderLayout());
@@ -22,6 +26,22 @@ class ParamGUI {
         initAction();
 
         taFile = new JTextArea();
+        taFile.getDocument().addDocumentListener(new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                notifyChange();
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                notifyChange();
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                notifyChange();
+            }
+        });
         paParam.add(buildTextArea("Dossiers racine",
                         taFile,	"Dossiers racine des fichiers à comparer", actDirectory),
                 BorderLayout.CENTER);
@@ -29,12 +49,21 @@ class ParamGUI {
         return paParam;
     }
 
+    void setOnChange(Runnable onChange) {
+        this.onChange = onChange;
+    }
+
     void refreshUI(Param param) {
         StringBuilder t = new StringBuilder();
         for (File f : param.getFiles()) {
             t.append(f.getAbsolutePath()).append("\n");
         }
-        taFile.setText(t.toString());
+        updating = true;
+        try {
+            taFile.setText(t.toString());
+        } finally {
+            updating = false;
+        }
     }
 
     void refreshParam(Param param) {
@@ -44,6 +73,12 @@ class ParamGUI {
             f.add(new File(fileName));
         }
         param.setFiles(f);
+    }
+
+    private void notifyChange() {
+        if (!updating && onChange != null) {
+            onChange.run();
+        }
     }
 
 

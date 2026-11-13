@@ -21,16 +21,6 @@ public class Ressemblance {
 		this.param = param;
 	}
 	
-	public List<ComparisonLine> run() {
-		return run((completed, total) -> { }, () -> false);
-	}
-
-	public List<ComparisonLine> run(BiConsumer<Long, Long> progressListener, BooleanSupplier cancellationRequested) {
-		Objects.requireNonNull(progressListener);
-		return run((operation, completed, total) -> progressListener.accept(completed, total),
-				cancellationRequested);
-	}
-
 	public List<ComparisonLine> run(Progress.Listener progressListener, BooleanSupplier cancellationRequested) {
 		Objects.requireNonNull(progressListener);
 		Objects.requireNonNull(cancellationRequested);

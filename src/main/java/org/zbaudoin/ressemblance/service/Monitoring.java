@@ -54,7 +54,7 @@ public class Monitoring {
 		param.getFiles().add(rootDir);
 		
 		Ressemblance ressemblance = new Ressemblance(param);
-		List<ComparisonLine> comparisonLines = ressemblance.run();
+		List<ComparisonLine> comparisonLines = ressemblance.run((operation, completed, total) -> {}, () -> false);
 
 		for (ComparisonLine comparisonLine : comparisonLines) {
 			if (comparisonLine.getResult() != null && comparisonLine.getResult().getSimilarite() >= paramMonitoring.getOffset()) {

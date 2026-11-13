@@ -2,6 +2,7 @@ package org.zbaudoin.ressemblance.ui;
 
 import org.zbaudoin.ressemblance.dao.ParamDAO;
 import org.zbaudoin.ressemblance.dao.ParamDAO.RessourceParamException;
+import org.zbaudoin.ressemblance.dao.SessionParamStore;
 import org.zbaudoin.ressemblance.model.ComparisonLine;
 import org.zbaudoin.ressemblance.model.MonitoringParam;
 import org.zbaudoin.ressemblance.model.Param;
@@ -13,6 +14,8 @@ import javax.swing.*;
 import javax.swing.JPopupMenu.Separator;
 import java.awt.*;
 import java.awt.event.ActionEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.io.File;
 import java.util.List;
 import java.util.concurrent.CancellationException;
@@ -41,6 +44,9 @@ class RessemblanceGUI {
 
 	private Param param;
 	private final Preferences preferences;
+	private final SessionParamStore sessionParamStore;
+	private Timer sessionSaveTimer;
+	private boolean hasUnsavedSessionChanges;
 	
 	private final Monitoring monitoring;
 	private MonitoringConsoleGUI monitoringConsole;
@@ -52,6 +58,8 @@ class RessemblanceGUI {
 	private AtomicBoolean runCancellationRequested;
 	
 	RessemblanceGUI() {
+		preferences = Preferences.userNodeForPackage(this.getClass());
+		sessionParamStore = new SessionParamStore(preferences);
 		
 		Logger log = Logger.getLogger(Monitoring.class.getName());
 		
@@ -61,11 +69,19 @@ class RessemblanceGUI {
 		resultGUI = new ResultGUI();
 		paramGUI =  new ParamGUI();
 
+		paramGUI.setOnChange(this::scheduleSessionSave);
 		initAction();
 		buildUI();
+		try {
+			Param savedSessionParam = sessionParamStore.load();
+			if (savedSessionParam != null) {
+				param = savedSessionParam;
+				hasUnsavedSessionChanges = true;
+			}
+		} catch (RessourceParamException e) {
+			showException(e);
+		}
 		refreshUI();
-		
-		preferences = Preferences.userNodeForPackage(this.getClass());
 	}
 	
 	private void initAction() {
@@ -75,6 +91,8 @@ class RessemblanceGUI {
 				param = new Param();
 				refreshUI();
 				setCurrentFile(null);
+				hasUnsavedSessionChanges = true;
+				scheduleSessionSave();
 			}
 		};
 		actOpen = new AbstractAction("Open") {
@@ -126,6 +144,7 @@ class RessemblanceGUI {
 		actExit = new AbstractAction("Quit") {
 			@Override
 			public void actionPerformed(ActionEvent e) {
+				persistPendingSession();
 				System.exit(0);
 			}
 		};
@@ -203,6 +222,12 @@ class RessemblanceGUI {
 	private void buildUI() {
 		fr = new JFrame("Ressenblance");
 		fr.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+		fr.addWindowListener(new WindowAdapter() {
+			@Override
+			public void windowClosing(WindowEvent e) {
+				persistPendingSession();
+			}
+		});
 		
 		JMenuBar bar = new JMenuBar();
 		JMenu menuFile = new JMenu("Configuration");
@@ -320,6 +345,41 @@ class RessemblanceGUI {
 		paramGUI.refreshParam(param);
 	}
 
+	private void scheduleSessionSave() {
+		hasUnsavedSessionChanges = true;
+		if (sessionSaveTimer == null) {
+			sessionSaveTimer = new Timer(500, e -> saveSessionParam());
+			sessionSaveTimer.setRepeats(false);
+		}
+		sessionSaveTimer.restart();
+	}
+
+	private void persistPendingSession() {
+		if (sessionSaveTimer != null) {
+			sessionSaveTimer.stop();
+		}
+		if (hasUnsavedSessionChanges) {
+			saveSessionParam();
+		}
+	}
+
+	private void saveSessionParam() {
+		refreshParam();
+		try {
+			sessionParamStore.save(param);
+		} catch (RessourceParamException e) {
+			showException(e);
+		}
+	}
+
+	private void clearSessionParam() throws RessourceParamException {
+		if (sessionSaveTimer != null) {
+			sessionSaveTimer.stop();
+		}
+		sessionParamStore.clear();
+		hasUnsavedSessionChanges = false;
+	}
+
 	void display() {
 		fr.setSize(600, 500);
 		fr.setLocationRelativeTo(null);
@@ -368,7 +428,13 @@ class RessemblanceGUI {
 	
 	private void fileToParam(File file) throws RessourceParamException {
 		ParamDAO dao = new ParamDAO(file);
-		param = dao.load();
+		Param loadedParam = dao.load();
+		if (sessionSaveTimer != null) {
+			sessionSaveTimer.stop();
+		}
+		sessionParamStore.clear();
+		param = loadedParam;
+		hasUnsavedSessionChanges = false;
 		refreshUI();
 		setCurrentFile(file);
 	}
@@ -377,6 +443,7 @@ class RessemblanceGUI {
 		ParamDAO dao = new ParamDAO(file);
 		dao.save(param);
 		setCurrentFile(file);
+		clearSessionParam();
 	}
 	
 	private void showException(Exception e) {

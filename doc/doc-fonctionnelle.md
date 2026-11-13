@@ -42,7 +42,9 @@ Les suppressions effectuées depuis ces actions sont directes. Elles ne passent 
 
 ## Gestion des configurations
 
-Les actions du menu **File** permettent de créer une configuration (**New**), d’en ouvrir une (**Open**), de l’enregistrer (**Save**) ou de l’enregistrer sous un autre fichier (**Save as**). Une configuration contient les racines, séparateurs et mots exclus. Elle est enregistrée sous forme d’objet Java sérialisé ; ce n’est pas un fichier de configuration texte destiné à être modifié manuellement.
+Les actions du menu **Configuration** permettent de créer une configuration (**New**), d’en ouvrir une (**Open**), de l’enregistrer (**Save**) ou de l’enregistrer sous un autre fichier (**Save as**). Une configuration contient les paramètres courants et est enregistrée sous forme de fichier JSON.
+
+Tant qu’une configuration n’a pas été enregistrée dans un fichier, ses modifications sont conservées dans les préférences utilisateur et restaurées au prochain démarrage. L’ouverture d’un fichier de configuration remplace cette configuration de session ; l’enregistrement réussi dans un fichier supprime la copie de session.
 
 Les derniers emplacements utilisés pour sélectionner des répertoires et des fichiers sont mémorisés dans les préférences utilisateur.
 
