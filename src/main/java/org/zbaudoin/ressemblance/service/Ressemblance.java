@@ -1,42 +1,61 @@
 package org.zbaudoin.ressemblance.service;
 
 import java.io.*;
-import java.security.*;
-import java.text.*;
 import java.util.*;
+import java.util.concurrent.CancellationException;
+import java.util.function.BiConsumer;
+import java.util.function.BooleanSupplier;
+import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
+import org.bytedeco.tesseract.PAGE_RES;
 import org.zbaudoin.ressemblance.model.*;
-
+import org.zbaudoin.ressemblance.model.Comparator;
 
 
 public class Ressemblance {
 
-	private final ParamRessemblance param;
+	private final Param param;
 	
-	public Ressemblance(ParamRessemblance param) {
+	public Ressemblance(Param param) {
 		this.param = param;
 	}
 	
 	public List<ComparisonLine> run() {
+		return run((completed, total) -> { }, () -> false);
+	}
+
+	public List<ComparisonLine> run(BiConsumer<Long, Long> progressListener, BooleanSupplier cancellationRequested) {
+		Objects.requireNonNull(progressListener);
+		return run((operation, completed, total) -> progressListener.accept(completed, total),
+				cancellationRequested);
+	}
+
+	public List<ComparisonLine> run(Progress.Listener progressListener, BooleanSupplier cancellationRequested) {
+		Objects.requireNonNull(progressListener);
+		Objects.requireNonNull(cancellationRequested);
+
 		List<ComparisonLine> result;
-		
+
+		System.out.println("================ DEBUT");
+		long tps = System.currentTimeMillis();
+
 		List<File> dirs = param.getFiles();
 		if (!dirs.isEmpty()) {
-			Set<ZFile> files = collecterFichiers(dirs);
-			MessageDigest digest = initDigest();
-			ComparatorLevel<ZFile> comparator = initComparator(digest);
-			result = process(files, comparator);
+			Set<File> files = collecterFichiers(dirs);
+			List<ComparisonLine> comparisonLines = peuplerComparaisonLine(files);
+			result = process(comparisonLines, progressListener, cancellationRequested);
 			Collections.sort(result);
 		} else {
 			result = new ArrayList<>();
+			progressListener.accept("", 0L, 0L);
 		}
+		System.out.println("================ TEMPS TOTAL = " + ((System.currentTimeMillis() - tps) / 1000) + " secondes");
 		return result;
 	}
 	
-	private Set<ZFile> collecterFichiers(List<File> rootDirs) {
-		
-		Set<ZFile> files = new HashSet<>();
-
+	private Set<File> collecterFichiers(List<File> rootDirs) {
+		Set<File> files = new HashSet<>();
         for (File dir : rootDirs) {
             addFiles(files, dir);
         }
@@ -44,7 +63,7 @@ public class Ressemblance {
 		return files;
 	}
 	
-	private void addFiles(Set<ZFile> files, File dir) {
+	private void addFiles(Set<File> files, File dir) {
 		if (!dir.isDirectory()) return;
 		
 		File[] files0 = dir.listFiles();
@@ -53,168 +72,91 @@ public class Ressemblance {
 				if (file.isDirectory()) {
 					addFiles(files, file);
 				} else {
-					files.add(new ZFile(file));
+					files.add(file);
 				}
 			}
 		}
 	}
 	
-	private ComparatorLevel<ZFile> initComparator(final MessageDigest digest) {
-		return (f1, f2) -> {
+	private List<ComparisonLine> process(List<ComparisonLine> comparisonLines,
+			Progress.Listener progressListener, BooleanSupplier cancellationRequested) {
+		long totalProgress = 0;
+		Map<Comparator, ComparisonLines> lignesParComparaison = new HashMap<>();
+		for (Comparator comparator : param.getComparators()) {
+			ExtensionValidator validator = new ExtensionValidator(comparator.getExtensions());
+			ComparisonLines lines = new ComparisonLines(comparisonLines.stream()
+					.filter(line -> validator.validate(line.getFile1()) && validator.validate(line.getFile2()))
+					.collect(Collectors.toList()));
+			lignesParComparaison.put(comparator, lines);
+			totalProgress += comparator.getTotalProgressUnits(lines);
+		}
+		Progress progres = new Progress(totalProgress, progressListener, cancellationRequested);
 
-            if (f1.length()==f2.length()) {
-
-                try {
-                    if (f1.getImprint()==null) f1.setImprint(computeImprint(f1, digest));
-                    if (f2.getImprint()==null) f2.setImprint(computeImprint(f2, digest));
-                    if (f1.getImprint().equals(f2.getImprint())) return 9999;
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-
-            if (f1.getWords()==null) f1.setWords(extractWords(f1));
-            if (f2.getWords()==null) f2.setWords(extractWords(f2));
-
-            int cpt = 0;
-            for (String word1 : f1.getWords()) {
-                if (f2.getWords().contains(word1)) cpt = cpt + 10;
-            }
-
-            cpt = cpt + computeLenghtLevel(f1, f2);
-
-            return cpt;
-        };
-	}
-	
-	private int computeLenghtLevel(ZFile f1, ZFile f2) {
-		double decreasePercent = (double)Math.min(f1.length(), f2.length()) / (double)Math.max(f1.length(), f2.length());
-		return f(100 - (int)(decreasePercent * 100));
-	}
-	
-	/**
-	 * @return y = 1/400 * (60 - x)²
-	 */
-	private int f(int x) {
-		int x0 = Math.min(x, 60);
-		return (60 - x0) * (60 - x0) / 400; 
-	}
-	
-	private List<ComparisonLine> process(Set<ZFile> files0, ComparatorLevel<ZFile> comparator) {
-		
-		List<ComparisonLine> comparisonLines = new ArrayList<>();
-		
-		List<ZFile> files = new ArrayList<>(files0);
-		
-		for (int n = 0; n < files.size(); n++) {
-			ZFile f1= files.get(n);
-			for (int m = n+1; m < files.size(); m++) {
-				ZFile f2 = files.get(m);
-				int level = comparator.compare(f1, f2);
-				if (level > 0) comparisonLines.add(new ComparisonLine(f1, f2, level));
+		long completedProgress = 0;
+		for (Comparator comparator : param.getComparators()) {
+			checkCancellation(cancellationRequested);
+			ComparisonLines lines = lignesParComparaison.get(comparator);
+			if (lines != null) {
+				progres.setCurrentOperation(comparator.getLibelle());
+				comparator.compare(lines, progres);
 			}
 		}
-		
+
 		return comparisonLines;
 	}
-	
-    private MessageDigest initDigest() {
-        try {
-            return MessageDigest.getInstance("SHA-1");
-        } catch (NoSuchAlgorithmException e) {
-        	return null;
-        }
-    }
 
-	private List<String> extractWords(File file) {
-		
-		List<String> resWords = new ArrayList<>();
-		
-		StringBuilder regex = new StringBuilder("[");
-		for (String sep : param.getSeparators()) {
-			regex.append(sep);
+	private List<ComparisonLine> peuplerComparaisonLine(Set<File> files0) {
+		List<ComparisonLine> result = new ArrayList<>();
+
+		List<File> files = new ArrayList<>(files0);
+		for (int n = 0; n < files.size(); n++) {
+			File f1= files.get(n);
+			for (int m = n+1; m < files.size(); m++) {
+				File f2 = files.get(m);
+				result.add(new ComparisonLine(f1, f2));
+			}
 		}
-		regex.append("]");
-		
-		String[] words = file.getName().split(regex.toString());
-        for (String s : words) {
-            String word = s.toUpperCase();
-            if (!word.isEmpty() && !param.getExcludes().contains(word)) {
-                resWords.add(word);
-            }
-        }
-		
-		Collections.sort(resWords);
-		
-		return resWords;
+
+		return result;
 	}
-	    	
-    private static String computeImprint(File file, MessageDigest digest) throws IOException {
-        digest.update(getByte(file));
-        byte[] b1 = digest.digest();
-        return toHexString(b1);
-    }
-         
-    private static byte[] getByte(File f) throws IOException {
-        
-        byte[] tableau = new byte[(int)f.length()];
-        
-        try (FileInputStream in = new FileInputStream(f)) {
-        	in.read(tableau);	
-        }
 
-        return tableau;
-    }
-
-    /*
-     * Converts a byte array to hex string
-     */
-    private static String toHexString(byte[] block) {
-        StringBuffer buf = new StringBuffer();
-
-        for (byte b : block) {
-            byte2hex(b, buf);
-        }
-        return buf.toString();
-    }
-
-    /*
-     * Converts a byte to hex digit and writes to the supplied buffer
-     */
-    private static void byte2hex(byte b, StringBuffer buf) {
-        char[] hexChars = { '0', '1', '2', '3', '4', '5', '6', '7', '8',
-                            '9', 'A', 'B', 'C', 'D', 'E', 'F' };
-        int high = ((b & 0xf0) >> 4);
-        int low = (b & 0x0f);
-        buf.append(hexChars[high]);
-        buf.append(hexChars[low]);
-    }
-	
-
-	public static class FileSizeFormater {
-
-	    private static final long[] CST_SIZE = {1024, 1024 * 1024, 1024 * 1024 * 1024};
-	    private static final String[] CST_UNITS = {"Ko", "Mo", "Go"};
-
-	    public static String format(final long value) {
-	        String result = null;
-	        long size;
-	        for (int i = 0; i < 3; i++) {
-	            size=value / CST_SIZE[i];
-	            if (size <= 1024) {
-	                result = mergeUnit(size, CST_UNITS[i]);
-	                break;
-	            }
-	        }
-	        return result;
-	    }
-
-	    public static String mergeUnit(long size, String unit) {
-	        return new DecimalFormat("#,##0.#").format(size) + " " + unit;
-	    }
+	private void checkCancellation(BooleanSupplier cancellationRequested) {
+		if (cancellationRequested.getAsBoolean()) {
+			throw new CancellationException("Ressemblance processing was cancelled");
+		}
 	}
-	
-	public interface ComparatorLevel<T> {
-		int compare(T o1, T o2);
+
+	private static class ExtensionValidator {
+
+		private final Set<String> extensions;
+
+		private ExtensionValidator(Set<String> extensions) {
+			Set<String> normalisedExtensions = extensions == null ? Collections.emptySet() : extensions.stream()
+							.filter(e -> !e.isBlank())
+							.map(e -> e.trim().toUpperCase(Locale.ROOT))
+							.collect(Collectors.toSet());
+			if (normalisedExtensions.isEmpty()) {
+				this.extensions = null;
+			} else if (normalisedExtensions.contains("*")) {
+				this.extensions = Collections.emptySet();
+			} else {
+				this.extensions = normalisedExtensions;
+			}
+		}
+
+		private boolean validate(File file) {
+			return extensions != null && (extensions.isEmpty() || extensions.contains(extractExtension(file.getName())));
+		}
+
+		private String extractExtension(String fileName) {
+			String extension;
+			int index = fileName.lastIndexOf(".");
+			if (index != -1) {
+				extension = fileName.substring(index + 1, fileName.length());
+			} else {
+				extension = "";
+			}
+			return extension.toUpperCase(Locale.ROOT);
+		}
 	}
 }

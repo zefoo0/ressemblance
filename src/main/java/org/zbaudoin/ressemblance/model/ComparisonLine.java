@@ -1,37 +1,72 @@
 package org.zbaudoin.ressemblance.model;
 
 
+import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.StringJoiner;
+
 public class ComparisonLine implements Comparable<ComparisonLine> {
 
-	private final ZFile e1;
-	private final ZFile e2;
-	private final int level;
-	
-	public ComparisonLine(ZFile e1, ZFile e2, int level) {
-		this.e1 = e1;
-		this.e2 = e2;
-		this.level = level;
-	}
-	
-	@Override
-	public int compareTo(ComparisonLine o) {
-		return o.level - level;
-	}
-	
-	public ZFile getElement1() {
-		return e1;
-	}
-	
-	public ZFile getElement2() {
-		return e2;
+	private final File file1;
+	private final File file2;
+	private final List<ComparisonLineError> erreurs;
+
+	private ComparisonLineResult result;
+
+	public ComparisonLine(File file1, File file2) {
+		this.file1 = file1;
+		this.file2 = file2;
+		this.erreurs = new ArrayList<>();
 	}
 
-	public int getLevel() {
-		return level;
+	public void setResult(ComparisonLineResult result) {
+		this.result = result;
+	}
+
+	@Override
+	public int compareTo(ComparisonLine o) {
+		if (o.getResult() == null && getResult() == null) {
+			return 0;
+		} else if (o.getResult() == null) {
+			return 1;
+		} else if (getResult() == null) {
+			return -1;
+		}
+		return Integer.compare(o.getResult().getSimilarite(), getResult().getSimilarite());
+	}
+
+	public File getFile1() {
+		return file1;
 	}
 	
+	public File getFile2() {
+		return file2;
+	}
+
+	public ComparisonLineResult getResult() {
+		return result;
+	}
+
+	public List<ComparisonLineError> getErreurs() {
+		return erreurs;
+	}
+
+	public void addErreur(ComparisonLineError error) {
+		 erreurs.add(error);
+	}
+
+	public boolean isResultMax() {
+		return result != null && result.getSimilarite() >= Comparator.MAX_RESULT;
+	}
+
 	@Override
 	public String toString() {
-		return "Seem [e1=" + e1 + ", e2=" + e2 + ", level=" + level + "]";
+		return new StringJoiner(", ", ComparisonLine.class.getSimpleName() + "[", "]")
+				.add("file1=" + file1)
+				.add("file2=" + file2)
+				.add("result=" + result)
+				.add("erreurs='" + erreurs + "'")
+				.toString();
 	}
 }

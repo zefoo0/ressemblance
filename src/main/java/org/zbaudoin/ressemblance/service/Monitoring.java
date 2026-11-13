@@ -20,7 +20,7 @@ public class Monitoring {
 		return logger;
 	}	
 	
-	public void start(ParamMonitoring paramMonitoring, ParamRessemblance paramRessemblance) {
+	public void start(MonitoringParam paramMonitoring, Param paramRessemblance) {
 		TimerTask task = createTask(paramMonitoring, paramRessemblance);
 		if (timer != null) throw new IllegalStateException();
 		timer = new Timer();
@@ -32,7 +32,7 @@ public class Monitoring {
 		timer = null;
 	}
 	
-	private TimerTask createTask(final ParamMonitoring paramMonitoring, final ParamRessemblance paramRessemblance) {
+	private TimerTask createTask(final MonitoringParam paramMonitoring, final Param paramRessemblance) {
 		return new TimerTask() {
 			@Override
 			public void run() {
@@ -47,19 +47,19 @@ public class Monitoring {
 		};
 	}
 	
-	private void processing(ParamMonitoring paramMonitoring, ParamRessemblance paramRessemblance) {
+	private void processing(MonitoringParam paramMonitoring, Param paramRessemblance) {
 		
 		File rootDir = new File(paramMonitoring.getDir());
-		ParamRessemblance param = paramRessemblance.clone();
+		Param param = paramRessemblance.clone();
 		param.getFiles().add(rootDir);
 		
 		Ressemblance ressemblance = new Ressemblance(param);
 		List<ComparisonLine> comparisonLines = ressemblance.run();
 
 		for (ComparisonLine comparisonLine : comparisonLines) {
-			if (comparisonLine.getLevel() >= paramMonitoring.getOffset()) {
-				File file1 = (File) comparisonLine.getElement1();
-				File file2 = (File) comparisonLine.getElement2();
+			if (comparisonLine.getResult() != null && comparisonLine.getResult().getSimilarite() >= paramMonitoring.getOffset()) {
+				File file1 = (File) comparisonLine.getFile1();
+				File file2 = (File) comparisonLine.getFile2();
 				
 				if (!file1.equals(file2) 
 						&& file1.exists() 

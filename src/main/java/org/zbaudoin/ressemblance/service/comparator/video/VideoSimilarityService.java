@@ -1,32 +1,23 @@
-package org.zbaudoin.ressemblance.video;
+package org.zbaudoin.ressemblance.service.comparator.video;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 class VideoSimilarityService {
 
     private static final int MAX_DISTANCE = 10;
 
     ComparisonResult compare(
-            List<VideoFrameExtractor.VideoFrame> framesA,
-            List<VideoFrameExtractor.VideoFrame> framesB) {
+            List<Long> hashesA,
+            List<Long> hashesB) {
 
-        if (framesA.isEmpty() || framesB.isEmpty()) {
+        if (hashesA.isEmpty() || hashesB.isEmpty()) {
             throw new IllegalArgumentException(
                 "Les vidéos doivent contenir des images."
             );
         }
 
-        List<Long> hashesA = framesA.stream()
-            .map(f -> PerceptualHash.compute(f.image))
-            .collect(Collectors.toList());
-
-        List<Long> hashesB = framesB.stream()
-            .map(f -> PerceptualHash.compute(f.image))
-                .collect(Collectors.toList());
-
         // Recherche du décalage temporel dominant
-        Map<Integer, Integer> offsets = new HashMap<>();
+        int[] offsets = new int[hashesA.size() + hashesB.size() - 1];
 
         for (int i = 0; i < hashesA.size(); i++) {
             for (int j = 0; j < hashesB.size(); j++) {
@@ -36,16 +27,19 @@ class VideoSimilarityService {
                 );
 
                 if (distance <= MAX_DISTANCE) {
-                    int offset = j - i;
-                    offsets.merge(offset, 1, Integer::sum);
+                    offsets[j - i + hashesA.size() - 1]++;
                 }
             }
         }
 
-        int bestOffset = offsets.entrySet().stream()
-            .max(Map.Entry.comparingByValue())
-            .map(Map.Entry::getKey)
-            .orElse(0);
+        int bestOffset = 0;
+        int bestOffsetMatches = 0;
+        for (int i = 0; i < offsets.length; i++) {
+            if (offsets[i] > bestOffsetMatches) {
+                bestOffsetMatches = offsets[i];
+                bestOffset = i - hashesA.size() + 1;
+            }
+        }
 
         // Comparaison des images alignées
         int matches = 0;

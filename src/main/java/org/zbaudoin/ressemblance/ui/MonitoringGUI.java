@@ -1,7 +1,6 @@
 package org.zbaudoin.ressemblance.ui;
 
 import java.awt.*;
-import java.awt.event.*;
 import java.io.*;
 
 import javax.swing.*;
@@ -17,18 +16,18 @@ class MonitoringGUI {
 	private JTextField tfDir;
 	private JTextField tfOffset;
 	
-	private ParamMonitoring response;
+	private MonitoringParam response;
 	
-	MonitoringGUI(JFrame fr, ParamMonitoring param) {
+	MonitoringGUI(JFrame fr, MonitoringParam param) {
 		build(fr, param);
 	}
 
-	ParamMonitoring show() {
+	MonitoringParam show() {
 		dialog.setVisible(true);
 		return response;
 	}
 	
-	private void build(JFrame fr, ParamMonitoring param) {
+	private void build(JFrame fr, MonitoringParam param) {
 		dialog = new JDialog(fr, "Monitoring", true);
 		
 		tfDir = new JTextField(50);
@@ -58,7 +57,7 @@ class MonitoringGUI {
             }
 
             try {
-                response = new ParamMonitoring(tfDir.getText(), Integer.parseInt(tfOffset.getText()));
+                response = new MonitoringParam(tfDir.getText(), Integer.parseInt(tfOffset.getText()));
                 dialog.dispose();
             } catch (NumberFormatException e1) {
                 JOptionPane.showMessageDialog(dialog, "Offset no numeric !");

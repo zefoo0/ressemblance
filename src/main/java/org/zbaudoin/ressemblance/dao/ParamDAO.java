@@ -1,12 +1,21 @@
 package org.zbaudoin.ressemblance.dao;
 
-import java.io.*;
+import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 
-import org.zbaudoin.ressemblance.model.*;
-import org.zbaudoin.util.io.*;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import org.zbaudoin.ressemblance.model.Param;
 
 
 public class ParamDAO {
+
+	private static final ObjectMapper MAPPER = new ObjectMapper()
+			.enable(SerializationFeature.INDENT_OUTPUT)
+			.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
 
 	private final File file;
 	
@@ -14,22 +23,22 @@ public class ParamDAO {
 		this.file = file;
 	}
 	
-	public void save(ParamRessemblance param) throws RessourceParamException {
+	public void save(Param param) throws RessourceParamException {
 		try {
-			FileUtil.writeObject(file, param);
+			MAPPER.writeValue(file, param);
 		} catch (IOException e) {
 			throw new RessourceParamException(e);
 		}
 	}
 	
-	public ParamRessemblance load() throws RessourceParamException {
-		try {
-			return (ParamRessemblance)FileUtil.readObject(file);
-		} catch (ClassNotFoundException | IOException e) {
+	public Param load() throws RessourceParamException {
+		try (BufferedInputStream input = new BufferedInputStream(Files.newInputStream(file.toPath()))) {
+			return MAPPER.readValue(input, Param.class);
+		} catch (IOException e) {
 			throw new RessourceParamException(e);
 		}
     }
-	
+
 	public static class RessourceParamException extends Exception {
 		private static final long serialVersionUID = 1L;
 

@@ -11,7 +11,6 @@ import javax.swing.*;
 import javax.swing.table.*;
 
 import org.zbaudoin.ressemblance.model.*;
-import org.zbaudoin.ressemblance.service.Ressemblance.*;
 
 
 public class ResultGUI {
@@ -28,12 +27,14 @@ public class ResultGUI {
 			@Override
 			public Object getValueAt(int rowIndex, int columnIndex) {
 				if (columnIndex == 0) {
-					return comparisonLines.get(rowIndex).getElement1();
+					return comparisonLines.get(rowIndex).getFile1();
 				}
 				if (columnIndex == 1) {
-					return comparisonLines.get(rowIndex).getElement2();
+					return comparisonLines.get(rowIndex).getFile2();
 				}
-				return comparisonLines.get(rowIndex).getLevel();
+				ComparisonLineResult result = comparisonLines.get(rowIndex).getResult();
+				return result == null ? -1 :
+						result.getSimilarite();
 			}
 
 			@Override

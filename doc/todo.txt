@@ -1,12 +1,7 @@
-- Paramétrage :
-    - stocker le paramétrage dans un fichier indépendamment de la version java et de la structure du objet du domaine du paramétrage
-
-- Résultat :
-    - ajouter les colonnes nom1, nom2, parent1, parent2, taille1, taille2
-    - permettre le masquage/affichage de certaines colonnes
-    - stocker l'état du masquage/ordre des colonnes dans le fichier de paramétrage
-    - Pour les comparaisons strictement identique, proposer de cocher un des 2 fichiers pour une suppression en masse
-- Comparaisons :
-    - comparaison fichier (taille + emprunte)
-    - comparaison contenu (par extension)
-    - comparaison par nom de fichier
+- IHM :
+    - Paramétrage des comparator
+    - Résultat :
+        - ajouter les colonnes nom1, nom2, parent1, parent2, taille1, taille2, libellé de la comparaison max, libelles des comparaisons en erreur
+        - permettre le masquage/affichage de certaines colonnes
+        - stocker l'état du masquage/ordre des colonnes dans le fichier de paramétrage
+        - Pour les comparaisons strictement identique, proposer de cocher un des 2 fichiers pour une suppression en masse

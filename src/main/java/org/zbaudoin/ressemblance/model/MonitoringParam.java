@@ -2,13 +2,13 @@ package org.zbaudoin.ressemblance.model;
 
 import java.io.*;
 
-public class ParamMonitoring implements Serializable {
+public class MonitoringParam implements Serializable {
 	private static final long serialVersionUID = 1L;
 
 	private String dir;
 	private int offset;
 	
-	public ParamMonitoring(String dir, int offset) {
+	public MonitoringParam(String dir, int offset) {
 		this.dir = dir;
 		this.offset = offset;
 	}

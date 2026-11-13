@@ -1,4 +1,4 @@
-package org.zbaudoin.ressemblance.video;
+package org.zbaudoin.ressemblance.service.comparator.video;
 
 class ComparisonResult {
 

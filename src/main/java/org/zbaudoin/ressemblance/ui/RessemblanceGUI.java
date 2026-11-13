@@ -1,34 +1,30 @@
 package org.zbaudoin.ressemblance.ui;
 
-import java.awt.BorderLayout;
-import java.awt.Component;
-import java.awt.Container;
-import java.awt.Dimension;
-import java.awt.event.ActionEvent;
-import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.logging.Logger;
-import java.util.prefs.Preferences;
+import org.zbaudoin.ressemblance.dao.ParamDAO;
+import org.zbaudoin.ressemblance.dao.ParamDAO.RessourceParamException;
+import org.zbaudoin.ressemblance.model.ComparisonLine;
+import org.zbaudoin.ressemblance.model.MonitoringParam;
+import org.zbaudoin.ressemblance.model.Param;
+import org.zbaudoin.ressemblance.service.Monitoring;
+import org.zbaudoin.ressemblance.service.Ressemblance;
+import org.zbaudoin.util.ui.WindowUtil;
 
 import javax.swing.*;
 import javax.swing.JPopupMenu.Separator;
-
-import org.zbaudoin.ressemblance.dao.ParamDAO;
-import org.zbaudoin.ressemblance.dao.ParamDAO.RessourceParamException;
-import org.zbaudoin.ressemblance.model.ParamMonitoring;
-import org.zbaudoin.ressemblance.model.ParamRessemblance;
-import org.zbaudoin.ressemblance.model.ComparisonLine;
-import org.zbaudoin.ressemblance.service.Monitoring;
-import org.zbaudoin.ressemblance.service.Ressemblance;
-import org.zbaudoin.util.ui.ComponentUtil;
-import org.zbaudoin.util.ui.WindowUtil;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.io.File;
+import java.util.List;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.logging.Logger;
+import java.util.prefs.Preferences;
 
 
 class RessemblanceGUI {
 
 	private JFrame fr;
-	private JFileChooser fcDir;
 	private JFileChooser fcFile;
 	
 	private Action actNew;
@@ -37,35 +33,33 @@ class RessemblanceGUI {
 	private Action actSaveAs;
 	private Action actExit;
 	private Action actRun;
-	private Action actExplor;
 	private Action actMonitorStart;
 	private Action actMonitorStop;
+	private Action actRunStop;
 	
-	private JTextArea taSep;
-	private JTextArea taExc;
-	private JTextArea taFile;
-
 	private File currectFile;
 
-	private ParamRessemblance param;
+	private Param param;
+	private final Preferences preferences;
 	
 	private final Monitoring monitoring;
-	
 	private MonitoringConsoleGUI monitoringConsole;
-	
-	private final Preferences preferences;
 
 	private final JTabbedPane tbPane;
-	private final ResultGUI result;
+	private final ResultGUI resultGUI;
+	private final ParamGUI paramGUI;
+	private JProgressBar runProgress;
+	private AtomicBoolean runCancellationRequested;
 	
 	RessemblanceGUI() {
 		
 		Logger log = Logger.getLogger(Monitoring.class.getName());
 		
-		param = new ParamRessemblance();
+		param = new Param();
 		monitoring = new Monitoring(log);
 		tbPane = new JTabbedPane();
-		result = new ResultGUI();
+		resultGUI = new ResultGUI();
+		paramGUI =  new ParamGUI();
 
 		initAction();
 		buildUI();
@@ -78,7 +72,7 @@ class RessemblanceGUI {
 		actNew = new AbstractAction("New") {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				param = new ParamRessemblance();
+				param = new Param();
 				refreshUI();
 				setCurrentFile(null);
 			}
@@ -136,42 +130,32 @@ class RessemblanceGUI {
 			}
 		};
 		
-		actExplor = new AbstractAction("Add Directory") {
-			private static final long serialVersionUID = 1L;
-
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				File dir = chooseDirectory(fr);
-				if (dir != null) {
-					taFile.setText(taFile.getText() + "\n" + dir.getAbsolutePath());
-				}
-			}
-		};
-		
 		actRun = new AbstractAction("Run") {
 
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				refreshParam();
-				try {
-					Ressemblance r = new Ressemblance(param);
-					List<ComparisonLine> comparisonLines = r.run();
-					if (!comparisonLines.isEmpty()) {
-						result.setComparisonLines(comparisonLines);
-						tbPane.setSelectedIndex(1);
-					}
-				} catch (Exception e1) {
-					showException(e1);
-				}
+				startRun();
 			}
 		};		
+		actRunStop = new AbstractAction("Arrêter") {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if (runCancellationRequested != null) {
+					runCancellationRequested.set(true);
+					actRunStop.setEnabled(false);
+					runProgress.setString("Arrêt en cours...");
+				}
+			}
+		};
+		actRunStop.setEnabled(false);
 		actMonitorStart = new AbstractAction("Monitoring start") {
 
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				refreshParam();
-				MonitoringGUI mg = new MonitoringGUI(fr, new ParamMonitoring(preferences.get("monitorig.directory.path", null), 9999));
-				ParamMonitoring pMonitor = mg.show();
+				MonitoringGUI mg = new MonitoringGUI(fr, new MonitoringParam(preferences.get("monitorig.directory.path", null), 9999));
+				MonitoringParam pMonitor = mg.show();
 				if (pMonitor != null) {
 					preferences.put("monitorig.directory.path", pMonitor.getDir());
 					
@@ -238,131 +222,110 @@ class RessemblanceGUI {
 
 		fr.setJMenuBar(bar);
 		fr.getContentPane().add(tbPane, BorderLayout.CENTER);
-		tbPane.add("Paramètres", buildPaneParametre());
-		tbPane.add("Résultat", result.build());
+		tbPane.add("Paramètres", paramGUI.build());
+		tbPane.add("Résultat", resultGUI.build());
+
+		JPanel paProgress = new JPanel(new BorderLayout(8, 0));
+		runProgress = new JProgressBar(0, 100);
+		runProgress.setStringPainted(true);
+		runProgress.setString("En attente");
+		paProgress.add(runProgress, BorderLayout.CENTER);
+		paProgress.add(new JButton(actRunStop), BorderLayout.EAST);
+		fr.getContentPane().add(paProgress, BorderLayout.SOUTH);
 	}
 
-	private JPanel buildPaneParametre() {
-		JPanel paParam = new JPanel(new BorderLayout());
+	private void startRun() {
+		Ressemblance ressemblance = new Ressemblance(param);
+		AtomicBoolean cancellationRequested = new AtomicBoolean();
+		runCancellationRequested = cancellationRequested;
+		actRun.setEnabled(false);
+		actRunStop.setEnabled(true);
+		runProgress.setValue(0);
+		runProgress.setIndeterminate(true);
+		runProgress.setString("Préparation...");
 
-		taSep = new JTextArea();
-		taExc = new JTextArea();
-		taExc.setPreferredSize(new Dimension(150, 100));
-		taFile = new JTextArea();
-
-		paParam.add(buildTextArea("Séparateurs", taSep, "Séparateurs utilisés pour " +
-				"découper les noms de fichiers en mots"), BorderLayout.WEST);
-		paParam.add(buildTextArea("Dossiers racine",
-						taFile,	"Dossiers racine des fichiers à comparer", actExplor),
-				BorderLayout.CENTER);
-		paParam.add(buildTextArea("Termes à exclure", taExc, "Termes à exclure de la comparaison"), BorderLayout.EAST);
-		return paParam;
-	}
-
-	private Container buildTextArea(String label, JTextArea ta, String toolTip, Action... actions) {
-		JPopupMenu pop = ComponentUtil.addMenuBasicUtilities(ta);
-		ComponentUtil.addUndoRedo(ta);
-		if (actions.length > 0) {
-			pop.add(new JPopupMenu.Separator());
-			for (Action action : actions) {
-				pop.add(action);	
+		SwingWorker<List<ComparisonLine>, ProgressUpdate> worker = new SwingWorker<>() {
+			@Override
+			protected List<ComparisonLine> doInBackground() {
+				return ressemblance.run((operation, completed, total) ->
+								publish(new ProgressUpdate(operation, completed, total)),
+						cancellationRequested::get);
 			}
-		}
-		
-		JPanel pa = new JPanel(new BorderLayout());
-		
-		JScrollPane sc = new JScrollPane(ta); 
 
-		JLabel lb = new JLabel(label, SwingConstants.CENTER);
-		if (toolTip != null) {
-			lb.setToolTipText(toolTip);
-		}
-		pa.add(lb, BorderLayout.NORTH);
-		pa.add(sc, BorderLayout.CENTER);
-		
-		return pa;
+			@Override
+			protected void process(List<ProgressUpdate> updates) {
+				ProgressUpdate update = updates.get(updates.size() - 1);
+				runProgress.setIndeterminate(false);
+				if (update.total == 0) {
+					runProgress.setValue(100);
+					runProgress.setString("Aucune comparaison");
+				} else {
+					int percent = (int) Math.min(100, 100L * update.completed / update.total);
+					runProgress.setValue(percent);
+					String progressText = update.completed + " / " + update.total;
+					runProgress.setString(update.operation.isEmpty()
+							? progressText
+							: update.operation + " : " + progressText);
+				}
+			}
+
+			@Override
+			protected void done() {
+				actRun.setEnabled(true);
+				actRunStop.setEnabled(false);
+				runCancellationRequested = null;
+				try {
+					List<ComparisonLine> comparisonLines = get();
+					if (!comparisonLines.isEmpty()) {
+						resultGUI.setComparisonLines(comparisonLines);
+						tbPane.setSelectedIndex(1);
+					}
+					runProgress.setIndeterminate(false);
+					runProgress.setValue(100);
+					runProgress.setString("Terminé");
+				} catch (InterruptedException e) {
+					Thread.currentThread().interrupt();
+					showException(e);
+				} catch (CancellationException e) {
+					runProgress.setIndeterminate(false);
+					runProgress.setValue(0);
+					runProgress.setString("Arrêté");
+				} catch (ExecutionException e) {
+					showException(e);
+					runProgress.setIndeterminate(false);
+					runProgress.setString("Erreur");
+				}
+			}
+		};
+		worker.execute();
 	}
-	
+
+	private static class ProgressUpdate {
+		private final String operation;
+		private final long completed;
+		private final long total;
+
+		private ProgressUpdate(String operation, long completed, long total) {
+			this.operation = operation;
+			this.completed = completed;
+			this.total = total;
+		}
+	}
+
 	private void refreshUI() {
-		StringBuilder sep = new StringBuilder();
-        for (String s : param.getSeparators()) {
-            sep.append(s).append("\n");
-        }
-		taSep.setText(sep.toString());
-
-		StringBuilder exc = new StringBuilder();
-        for (String s : param.getExcludes()) {
-            exc.append(s).append("\n");
-        }
-		taExc.setText(exc.toString());
-
-		StringBuilder t = new StringBuilder();
-        for (File f : param.getFiles()) {
-            t.append(f.getAbsolutePath()).append("\n");
-        }
-		taFile.setText(t.toString());
+		paramGUI.refreshUI(param);
 	}
 
 	private void refreshParam() {
-		
-		param.setSeparators(scan(taSep.getText()));
-
-		List<String> ss = scan(taExc.getText().toUpperCase());
-		ss.sort((o1, o2) -> o2.length() - o1.length());
-		param.setExcludes(ss);
-
-		List<String> filesName = scan(taFile.getText());
-		List<File> f = new ArrayList<>();
-        for (String fileName : filesName) {
-            f.add(new File(fileName));
-
-        }
-		param.setFiles(f);
+		paramGUI.refreshParam(param);
 	}
 
-	private List<String> scan(String txt) {
-		String[] lines = txt.split("\\n");
-		List<String> res = new ArrayList<>();
-        for (String s : lines) {
-            String line = s;
-            line = line.trim();
-            if (!line.isEmpty()) res.add(line);
-        }
-		
-		return res;
-	}
-	
 	void display() {
 		fr.setSize(600, 500);
 		fr.setLocationRelativeTo(null);
 		fr.setVisible(true);
 	}
-	
-	private File chooseDirectory(Component parent) {
-		if (fcDir == null) {
-			fcDir = new JFileChooser();
-			fcDir.setDialogType(JFileChooser.OPEN_DIALOG);
-			fcDir.setDialogTitle("Select root directory");
-			fcDir.setMultiSelectionEnabled(false);
-			fcDir.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-			
-			try {
-				File dirPref = new File(preferences.get("directory.path", System.getProperty("user.home")));
-				fcDir.setCurrentDirectory(dirPref);
-			} catch(RuntimeException e) {
-				showException(e);
-			}
-		}
-		
-		if (fcDir.showDialog(parent, "Select") != JFileChooser.APPROVE_OPTION) {
-			return null;
-		} 
-		
-		preferences.put("directory.path", fcDir.getSelectedFile().getAbsolutePath());
-		
-		return fcDir.getSelectedFile();
-	}
-	
+
 	private File chooseFileToOpen(Component parent) {
 		initFileChooserFile();
 		
