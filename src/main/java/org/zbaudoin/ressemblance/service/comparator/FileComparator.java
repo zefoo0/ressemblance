@@ -48,16 +48,6 @@ public class FileComparator extends AbstractComparator {
         }
     }
 
-//    @Override
-//    public void startCompare() {
-//        empruntes = new HashMap<>();
-//    }
-//
-//    @Override
-//    public void finishCompare() {
-//        empruntes = null;
-//    }
-
     private int compare(File f1, File f2) {
         int result = 0;
         if (f1.length() == f2.length()) {
