@@ -27,7 +27,7 @@ public class ResultGUI {
 	};
 
 	private final AbstractTableModel model;
-	private List<ComparisonLine> comparisonLines;
+	private ComparisonLines comparisonLines;
 	private JTable table;
 	private TableRowSorter<AbstractTableModel> sorter;
 	private Map<String, TableColumn> columns;
@@ -36,7 +36,7 @@ public class ResultGUI {
 	private boolean restoringState;
 
 	public ResultGUI() {
-		comparisonLines = new ArrayList<>();
+		comparisonLines = new ComparisonLines(Collections.emptyList());
 		tableState = new ResultTableState();
 		model = new AbstractTableModel() {
 			private static final long serialVersionUID = 1L;
@@ -153,7 +153,7 @@ public class ResultGUI {
 	}
 
 	public void setComparisonLines(List<ComparisonLine> comparisonLines) {
-		this.comparisonLines = comparisonLines;
+		this.comparisonLines = new ComparisonLines(comparisonLines);
 		model.fireTableDataChanged();
 	}
 
@@ -590,16 +590,53 @@ public class ResultGUI {
 		if (rows.length == 0) {
 			return;
 		}
-		File example = getFileAtViewRow(ta, rows[0], fileColumn);
+		List<File> files = new ArrayList<>();
+		for (int row : rows) {
+			File file = getFileAtViewRow(ta, row, fileColumn);
+			if (file != null && !files.contains(file)) {
+				files.add(file);
+			}
+		}
+		if (files.isEmpty()) {
+			return;
+		}
+		File example = files.get(0);
 		int result = JOptionPane.showConfirmDialog(null,
-				"Êtes-vous sur de supprimer " + rows.length + " fichiers ?\n"
+				"Êtes-vous sur de supprimer " + files.size() + " fichiers ?\n"
 						+ example.getAbsolutePath() + " ...",
 				title, JOptionPane.OK_CANCEL_OPTION);
 		if (result == JOptionPane.OK_OPTION) {
-			for (int row : rows) {
-				getFileAtViewRow(ta, row, fileColumn).delete();
+			List<File> deletedFiles = new ArrayList<>();
+			List<File> failedFiles = new ArrayList<>();
+			for (File file : files) {
+				if (file.delete()) {
+					deletedFiles.add(file);
+				} else {
+					failedFiles.add(file);
+				}
 			}
-			JOptionPane.showMessageDialog(null, "Opération terminée");
+			removeDeletedFiles(deletedFiles);
+			if (failedFiles.isEmpty()) {
+				JOptionPane.showMessageDialog(null, "Opération terminée");
+			} else {
+				StringJoiner failures = new StringJoiner("\n",
+						"Impossible de supprimer les fichiers suivants :\n", "");
+				for (File file : failedFiles) {
+					failures.add(file.getAbsolutePath());
+				}
+				JOptionPane.showMessageDialog(null, failures.toString(),
+						"Suppression impossible", JOptionPane.WARNING_MESSAGE);
+			}
+		}
+	}
+
+	private void removeDeletedFiles(Collection<File> files) {
+		boolean changed = false;
+		for (File file : files) {
+			changed |= comparisonLines.removeComparisonsContaining(file);
+		}
+		if (changed) {
+			model.fireTableDataChanged();
 		}
 	}
 
@@ -664,10 +701,20 @@ public class ResultGUI {
 
 		int result = JOptionPane.showConfirmDialog(null, radioPanel, "Delete files ?", JOptionPane.OK_CANCEL_OPTION);
 		if (result == JOptionPane.OK_OPTION) {
+			File deletedFile = null;
 			if (rb1.isSelected()) {
-				file1.delete();
+				deletedFile = file1;
 			} else if (rb2.isSelected()) {
-				file2.delete();
+				deletedFile = file2;
+			}
+			if (deletedFile != null) {
+				if (deletedFile.delete()) {
+					removeDeletedFiles(Collections.singleton(deletedFile));
+				} else {
+					JOptionPane.showMessageDialog(null,
+							"Impossible de supprimer le fichier :\n" + deletedFile.getAbsolutePath(),
+							"Suppression impossible", JOptionPane.WARNING_MESSAGE);
+				}
 			}
 		}
 		link1.delete();
