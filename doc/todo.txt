@@ -1,4 +1,2 @@
-* Simplification :
- vérifie s'il n'y a pas des simplifications possibles
 * Renommage du module, package, classes
 * Résultat : Pour les comparaisons strictement identiques, proposer de cocher un des 2 fichiers pour une suppression en masse

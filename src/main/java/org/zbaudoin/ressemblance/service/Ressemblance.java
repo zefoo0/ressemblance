@@ -112,26 +112,23 @@ public class Ressemblance {
 		}
 	}
 
+	/** Null or empty extensions match no files; "*" explicitly matches every extension. */
 	private static class ExtensionValidator {
 
 		private final Set<String> extensions;
+		private final boolean acceptsAllExtensions;
 
 		private ExtensionValidator(Set<String> extensions) {
-			Set<String> normalisedExtensions = extensions == null ? Collections.emptySet() : extensions.stream()
+			Set<String> normalizedExtensions = extensions == null ? Collections.emptySet() : extensions.stream()
 							.filter(e -> !e.isBlank())
 							.map(e -> e.trim().toUpperCase(Locale.ROOT))
 							.collect(Collectors.toSet());
-			if (normalisedExtensions.isEmpty()) {
-				this.extensions = null;
-			} else if (normalisedExtensions.contains("*")) {
-				this.extensions = Collections.emptySet();
-			} else {
-				this.extensions = normalisedExtensions;
-			}
+			acceptsAllExtensions = normalizedExtensions.contains("*");
+			this.extensions = acceptsAllExtensions ? Collections.emptySet() : normalizedExtensions;
 		}
 
 		private boolean validate(File file) {
-			return extensions != null && (extensions.isEmpty() || extensions.contains(extractExtension(file.getName())));
+			return acceptsAllExtensions || extensions.contains(extractExtension(file.getName()));
 		}
 
 		private String extractExtension(String fileName) {

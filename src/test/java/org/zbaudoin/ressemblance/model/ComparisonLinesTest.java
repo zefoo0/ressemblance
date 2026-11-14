@@ -4,6 +4,8 @@ import org.junit.Test;
 
 import java.io.File;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
@@ -11,6 +13,19 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class ComparisonLinesTest {
+
+    @Test
+    public void collectsUniqueFilesFromBothSidesOfEveryComparison() {
+        File first = new File("/files/first.txt");
+        File second = new File("/files/second.txt");
+        File third = new File("/files/third.txt");
+        ComparisonLines lines = new ComparisonLines(Arrays.asList(
+                new ComparisonLine(first, second),
+                new ComparisonLine(second, third)));
+
+        assertEquals(new HashSet<>(Arrays.asList(first, second, third)), lines.getAllFiles());
+        assertEquals(Collections.emptySet(), new ComparisonLines(Collections.emptyList()).getAllFiles());
+    }
 
     @Test
     public void removesComparisonsContainingTheDeletedFile() {

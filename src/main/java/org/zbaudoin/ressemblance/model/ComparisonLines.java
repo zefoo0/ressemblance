@@ -3,9 +3,9 @@ package org.zbaudoin.ressemblance.model;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 public class ComparisonLines extends ArrayList<ComparisonLine> {
 
@@ -14,8 +14,11 @@ public class ComparisonLines extends ArrayList<ComparisonLine> {
     }
 
     public Set<File> getAllFiles() {
-        Set<File> files = this.stream().map(ComparisonLine::getFile1).collect(Collectors.toSet());
-        files.addAll(this.stream().map(ComparisonLine::getFile2).collect(Collectors.toSet()));
+        Set<File> files = new HashSet<>();
+        for (ComparisonLine line : this) {
+            files.add(line.getFile1());
+            files.add(line.getFile2());
+        }
         return files;
     }
 
