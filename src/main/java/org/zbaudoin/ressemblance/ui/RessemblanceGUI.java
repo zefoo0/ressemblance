@@ -200,15 +200,20 @@ class RessemblanceGUI {
 
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				monitoring.cancel();
-				
-				monitoringConsole.setVisible(false);
-				monitoring.getLogger().removeHandler(monitoringConsole.getHandler());
-				
-				actMonitorStart.setEnabled(true);
-				actMonitorStop.setEnabled(false);
+				stopMonitoring();
 			}
 		};
+		actMonitorStop.setEnabled(false);
+	}
+
+	private void stopMonitoring() {
+		monitoring.cancel();
+		if (monitoringConsole != null) {
+			monitoringConsole.setVisible(false);
+			monitoring.getLogger().removeHandler(monitoringConsole.getHandler());
+			monitoringConsole = null;
+		}
+		actMonitorStart.setEnabled(true);
 		actMonitorStop.setEnabled(false);
 	}
 	
@@ -229,6 +234,7 @@ class RessemblanceGUI {
 			@Override
 			public void windowClosing(WindowEvent e) {
 				persistPendingSession();
+				stopMonitoring();
 			}
 		});
 		

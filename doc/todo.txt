@@ -1,2 +1,5 @@
-* Relecture et Simplification
+* Simplification :
+ vérifie s'il n'y a pas des simplifications possibles
+* Renommage du module, package, classes
 * Résultat : Pour les comparaisons strictement identiques, proposer de cocher un des 2 fichiers pour une suppression en masse
+lorsque l'utilisateur saisie le coefficient de comparateur dans le paramétrage, il faut vérifier que la donnée est comprise entre 0 inclu et 1 inclu.

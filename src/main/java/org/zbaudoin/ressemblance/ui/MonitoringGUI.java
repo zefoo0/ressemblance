@@ -41,51 +41,43 @@ class MonitoringGUI {
             if (f != null) tfDir.setText(f.getAbsolutePath());
         });
 
-		JPanel paSouth = getPaSouth();
-
 		JPanel paCenter = new JPanel(new FlowLayout());
 		paCenter.add(new JLabel("Root directory to monitoring"));
 		paCenter.add(tfDir);
 		paCenter.add(btDir);
 		paCenter.add(new JLabel("Offset"));
 		paCenter.add(tfOffset);
-		
-		dialog.getContentPane().setLayout(new BorderLayout());
-		dialog.getContentPane().add(paCenter, BorderLayout.CENTER);
-		dialog.getContentPane().add(paSouth, BorderLayout.SOUTH);
-		
-		dialog.pack();
-		dialog.setLocationRelativeTo(dialog);
-	}
 
-	private JPanel getPaSouth() {
 		JButton btCancel = new JButton("Cancel");
 		btCancel.addActionListener(e -> {
-            response = null;
-            dialog.dispose();
-        });
-
+			response = null;
+			dialog.dispose();
+		});
 		JButton btOk = new JButton("Ok");
 		btOk.addActionListener(e -> {
+			File f = new File(tfDir.getText());
+			if (!f.exists()) {
+				JOptionPane.showMessageDialog(dialog, "File '" + f.getAbsolutePath() + "' not exists !");
+				return;
+			}
 
-            File f = new File(tfDir.getText());
-            if (!f.exists()) {
-                JOptionPane.showMessageDialog(dialog, "File '" + f.getAbsolutePath() + "' not exists !");
-                return;
-            }
-
-            try {
-                response = new MonitoringParam(tfDir.getText(), Integer.parseInt(tfOffset.getText()));
-                dialog.dispose();
-            } catch (NumberFormatException e1) {
-                JOptionPane.showMessageDialog(dialog, "Offset no numeric !");
-            }
-        });
-
+			try {
+				response = new MonitoringParam(tfDir.getText(), Integer.parseInt(tfOffset.getText()));
+				dialog.dispose();
+			} catch (NumberFormatException e1) {
+				JOptionPane.showMessageDialog(dialog, "Offset no numeric !");
+			}
+		});
 		JPanel paSouth = new JPanel(new FlowLayout());
 		paSouth.add(btCancel);
 		paSouth.add(btOk);
-		return paSouth;
+
+		dialog.getContentPane().setLayout(new BorderLayout());
+		dialog.getContentPane().add(paCenter, BorderLayout.CENTER);
+		dialog.getContentPane().add(paSouth, BorderLayout.SOUTH);
+
+		dialog.pack();
+		dialog.setLocationRelativeTo(dialog.getOwner());
 	}
 
 	private File chooseDirectory(Component parent) {

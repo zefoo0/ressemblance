@@ -6,8 +6,8 @@ import org.zbaudoin.ressemblance.model.ComparisonLines;
 import org.zbaudoin.ressemblance.service.Progress;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HashMap;
@@ -17,7 +17,7 @@ import java.util.Set;
 public class FileComparator extends AbstractComparator {
 
     private final MessageDigest digest;
-    private Map<File, String> empruntes;
+    private Map<File, byte[]> empruntes;
 
     public FileComparator() {
         digest = initDigest();
@@ -39,7 +39,7 @@ public class FileComparator extends AbstractComparator {
         empruntes = new HashMap<>();
         for (ComparisonLine comparison : comparisons) {
             progress.checkCancellation();
-            if (comparison.isResultMax()) {
+            if (comparison.canImproveResult()) {
                 try {
                     int valeur = compare(comparison.getFile1(), comparison.getFile2());
                     setResult(comparison, valeur);
@@ -55,17 +55,17 @@ public class FileComparator extends AbstractComparator {
         int result = 0;
         if (f1.length() == f2.length()) {
             try {
-                String emprunte1 = empruntes.get(f1);
+                byte[] emprunte1 = empruntes.get(f1);
                 if (emprunte1 == null) {
                     emprunte1 = computeImprint(f1, digest);
                     empruntes.put(f1, emprunte1);
                 }
-                String emprunte2 = empruntes.get(f2);
+                byte[] emprunte2 = empruntes.get(f2);
                 if (emprunte2 == null) {
                     emprunte2 = computeImprint(f2, digest);
                     empruntes.put(f2, emprunte2);
                 }
-                if (emprunte1.equals(emprunte2)) {
+                if (MessageDigest.isEqual(emprunte1, emprunte2)) {
                     result = 100;
                 }
             } catch (IOException e) {
@@ -75,52 +75,27 @@ public class FileComparator extends AbstractComparator {
         return result;
     }
 
-    private static String computeImprint(File file, MessageDigest digest) throws IOException {
-        digest.update(getByte(file));
-        byte[] b1 = digest.digest();
-        return toHexString(b1);
-    }
-
-    private static byte[] getByte(File f) throws IOException {
-
-        byte[] tableau = new byte[(int)f.length()];
-
-        try (FileInputStream in = new FileInputStream(f)) {
-            in.read(tableau);
+    private static byte[] computeImprint(File file, MessageDigest digest) throws IOException {
+        byte[] buffer = new byte[8192];
+        digest.reset();
+        try {
+            try (InputStream input = java.nio.file.Files.newInputStream(file.toPath())) {
+                int bytesRead;
+                while ((bytesRead = input.read(buffer)) != -1) {
+                    digest.update(buffer, 0, bytesRead);
+                }
+            }
+            return digest.digest();
+        } finally {
+            digest.reset();
         }
-
-        return tableau;
-    }
-
-    /*
-     * Converts a byte array to hex string
-     */
-    private static String toHexString(byte[] block) {
-        StringBuffer buf = new StringBuffer();
-
-        for (byte b : block) {
-            byte2hex(b, buf);
-        }
-        return buf.toString();
-    }
-
-    /*
-     * Converts a byte to hex digit and writes to the supplied buffer
-     */
-    private static void byte2hex(byte b, StringBuffer buf) {
-        char[] hexChars = { '0', '1', '2', '3', '4', '5', '6', '7', '8',
-                '9', 'A', 'B', 'C', 'D', 'E', 'F' };
-        int high = ((b & 0xf0) >> 4);
-        int low = (b & 0x0f);
-        buf.append(hexChars[high]);
-        buf.append(hexChars[low]);
     }
 
     private MessageDigest initDigest() {
         try {
             return MessageDigest.getInstance("SHA-1");
         } catch (NoSuchAlgorithmException e) {
-            return null;
+            throw new IllegalStateException("SHA-1 digest is not available", e);
         }
     }
 

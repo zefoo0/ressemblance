@@ -35,7 +35,7 @@ public class ContenuImageComparator extends AbstractComparator {
         progress.setCurrentSubtask("Comparaison des images");
         for (ComparisonLine comparison : comparisons) {
             progress.checkCancellation();
-            if (comparison.isResultMax()) {
+            if (comparison.canImproveResult()) {
                 try {
                     int similarity = service.compare(comparison.getFile1(), comparison.getFile2());
                     setResult(comparison, similarity);
