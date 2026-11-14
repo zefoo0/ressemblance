@@ -1,5 +1,7 @@
 package org.zbaudoin.ressemblance.service.comparator.video;
 
+import org.zbaudoin.ressemblance.service.comparator.PerceptualHash;
+
 import java.util.*;
 
 class VideoSimilarityService {
@@ -12,7 +14,7 @@ class VideoSimilarityService {
 
         if (hashesA.isEmpty() || hashesB.isEmpty()) {
             throw new IllegalArgumentException(
-                "Les vidéos doivent contenir des images."
+                    "Les vidéos doivent contenir des images."
             );
         }
 
@@ -23,7 +25,7 @@ class VideoSimilarityService {
             for (int j = 0; j < hashesB.size(); j++) {
 
                 int distance = PerceptualHash.distance(
-                    hashesA.get(i), hashesB.get(j)
+                        hashesA.get(i), hashesB.get(j)
                 );
 
                 if (distance <= MAX_DISTANCE) {
@@ -47,8 +49,8 @@ class VideoSimilarityService {
 
         int startA = Math.max(0, -bestOffset);
         int endA = Math.min(
-            hashesA.size(),
-            hashesB.size() - bestOffset
+                hashesA.size(),
+                hashesB.size() - bestOffset
         );
 
         for (int i = startA; i < endA; i++) {
@@ -56,8 +58,8 @@ class VideoSimilarityService {
             int j = i + bestOffset;
 
             int distance = PerceptualHash.distance(
-                hashesA.get(i),
-                hashesB.get(j)
+                    hashesA.get(i),
+                    hashesB.get(j)
             );
 
             compared++;
@@ -67,15 +69,15 @@ class VideoSimilarityService {
             }
         }
 
-        double similarity = compared == 0
-            ? 0
-            : 100.0 * matches / compared;
+        double similarity = compared==0
+                ? 0
+                :100.0 * matches / compared;
 
         return new ComparisonResult(
-            similarity,
-            compared,
-            matches,
-            bestOffset
+                similarity,
+                compared,
+                matches,
+                bestOffset
         );
     }
 }

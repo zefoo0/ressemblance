@@ -14,7 +14,7 @@ public class FileNameComparator extends AbstractComparator {
 
     public FileNameComparator() {
         setExtensions(Set.of("*"));
-        setCoefficient(0.5f);
+        setCoefficient(0.25f);
     }
 
     @Override

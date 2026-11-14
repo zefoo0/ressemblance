@@ -1,19 +1,20 @@
-package org.zbaudoin.ressemblance.service.comparator.video;
+package org.zbaudoin.ressemblance.service.comparator;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
 
-class PerceptualHash {
+public class PerceptualHash {
 
-    static final int SIZE = 32;
+    private static final int SIZE = 32;
     private static final int HASH_SIZE = 8;
+    public static final int HASH_BITS = HASH_SIZE * HASH_SIZE - 1;
     private static final double[][] COSINE = createCosineTable();
 
-    static long compute(BufferedImage image) {
+    public static long compute(BufferedImage image) {
 
         BufferedImage resized = image;
-        if (image.getWidth() != SIZE || image.getHeight() != SIZE
-                || image.getType() != BufferedImage.TYPE_BYTE_GRAY) {
+        if (image.getWidth()!=SIZE || image.getHeight()!=SIZE
+                || image.getType()!=BufferedImage.TYPE_BYTE_GRAY) {
             resized = new BufferedImage(SIZE, SIZE, BufferedImage.TYPE_BYTE_GRAY);
             Graphics2D g = resized.createGraphics();
             g.drawImage(image, 0, 0, SIZE, SIZE, null);
@@ -25,7 +26,7 @@ class PerceptualHash {
         for (int y = 0; y < SIZE; y++) {
             for (int x = 0; x < SIZE; x++) {
                 pixels[y][x] =
-                    resized.getRaster().getSample(x, y, 0);
+                        resized.getRaster().getSample(x, y, 0);
             }
         }
 
@@ -58,7 +59,7 @@ class PerceptualHash {
         for (int u = 0; u < HASH_SIZE; u++) {
             for (int v = 0; v < HASH_SIZE; v++) {
 
-                if (u == 0 && v == 0) continue;
+                if (u==0 && v==0) continue;
 
                 values[index++] = dct[u][v];
             }
@@ -75,7 +76,7 @@ class PerceptualHash {
         for (int u = 0; u < HASH_SIZE; u++) {
             for (int v = 0; v < HASH_SIZE; v++) {
 
-                if (u == 0 && v == 0) continue;
+                if (u==0 && v==0) continue;
 
                 if (dct[u][v] > median) {
                     hash |= (1L << bit);
@@ -93,14 +94,14 @@ class PerceptualHash {
         for (int frequency = 0; frequency < HASH_SIZE; frequency++) {
             for (int position = 0; position < SIZE; position++) {
                 cosine[frequency][position] = Math.cos(
-                    (2 * position + 1) * frequency * Math.PI / (2 * SIZE)
+                        (2 * position + 1) * frequency * Math.PI / (2 * SIZE)
                 );
             }
         }
         return cosine;
     }
 
-    static int distance(long hash1, long hash2) {
+    public static int distance(long hash1, long hash2) {
         return Long.bitCount(hash1 ^ hash2);
     }
 }

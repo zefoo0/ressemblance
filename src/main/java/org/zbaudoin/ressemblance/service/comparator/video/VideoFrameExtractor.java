@@ -1,5 +1,6 @@
 package org.zbaudoin.ressemblance.service.comparator.video;
 
+import org.zbaudoin.ressemblance.service.comparator.PerceptualHash;
 import org.bytedeco.javacv.FFmpegFrameGrabber;
 import org.bytedeco.javacv.Java2DFrameConverter;
 import org.bytedeco.javacv.Frame;
@@ -33,7 +34,7 @@ class VideoFrameExtractor {
             while (true) {
                 checkCancellation(cancellationRequested);
                 frame = grabber.grabImage();
-                if (frame == null) {
+                if (frame==null) {
                     break;
                 }
                 long timestamp = grabber.getTimestamp();
@@ -42,7 +43,7 @@ class VideoFrameExtractor {
                 }
 
                 BufferedImage image = converter.convert(frame);
-                if (image != null) {
+                if (image!=null) {
                     hashes.add(PerceptualHash.compute(image));
                     do {
                         nextSampleTime += SAMPLE_INTERVAL_MICROS;
