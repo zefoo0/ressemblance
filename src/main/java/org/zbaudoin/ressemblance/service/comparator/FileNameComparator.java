@@ -30,7 +30,7 @@ public class FileNameComparator extends AbstractComparator {
     public void compare(ComparisonLines comparisons, Progress progress) {
         for (ComparisonLine comparison : comparisons) {
             progress.checkCancellation();
-            if (!comparison.isResultMax()) {
+            if (comparison.isResultMax()) {
                 int valeur = compare(comparison.getFile1(), comparison.getFile2());
                 setResult(comparison, valeur);
             }

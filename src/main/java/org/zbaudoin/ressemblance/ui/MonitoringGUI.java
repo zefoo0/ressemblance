@@ -40,13 +40,31 @@ class MonitoringGUI {
             File f = chooseDirectory(dialog);
             if (f != null) tfDir.setText(f.getAbsolutePath());
         });
+
+		JPanel paSouth = getPaSouth();
+
+		JPanel paCenter = new JPanel(new FlowLayout());
+		paCenter.add(new JLabel("Root directory to monitoring"));
+		paCenter.add(tfDir);
+		paCenter.add(btDir);
+		paCenter.add(new JLabel("Offset"));
+		paCenter.add(tfOffset);
 		
+		dialog.getContentPane().setLayout(new BorderLayout());
+		dialog.getContentPane().add(paCenter, BorderLayout.CENTER);
+		dialog.getContentPane().add(paSouth, BorderLayout.SOUTH);
+		
+		dialog.pack();
+		dialog.setLocationRelativeTo(dialog);
+	}
+
+	private JPanel getPaSouth() {
 		JButton btCancel = new JButton("Cancel");
 		btCancel.addActionListener(e -> {
             response = null;
             dialog.dispose();
         });
-		
+
 		JButton btOk = new JButton("Ok");
 		btOk.addActionListener(e -> {
 
@@ -63,26 +81,13 @@ class MonitoringGUI {
                 JOptionPane.showMessageDialog(dialog, "Offset no numeric !");
             }
         });
-		
+
 		JPanel paSouth = new JPanel(new FlowLayout());
 		paSouth.add(btCancel);
 		paSouth.add(btOk);
-		
-		JPanel paCenter = new JPanel(new FlowLayout());
-		paCenter.add(new JLabel("Root directory to monitoring"));
-		paCenter.add(tfDir);
-		paCenter.add(btDir);
-		paCenter.add(new JLabel("Offset"));
-		paCenter.add(tfOffset);
-		
-		dialog.getContentPane().setLayout(new BorderLayout());
-		dialog.getContentPane().add(paCenter, BorderLayout.CENTER);
-		dialog.getContentPane().add(paSouth, BorderLayout.SOUTH);
-		
-		dialog.pack();
-		dialog.setLocationRelativeTo(dialog);
+		return paSouth;
 	}
-	
+
 	private File chooseDirectory(Component parent) {
 		if (fcDir == null) {
 			fcDir = new JFileChooser();

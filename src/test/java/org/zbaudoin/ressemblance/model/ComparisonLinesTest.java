@@ -4,6 +4,7 @@ import org.junit.Test;
 
 import java.io.File;
 import java.util.Arrays;
+import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -22,7 +23,7 @@ public class ComparisonLinesTest {
 
         assertTrue(lines.removeComparisonsContaining(new File("/files/deleted.txt")));
 
-        assertEquals(Arrays.asList(remaining), lines);
+        assertEquals(List.of(remaining), lines);
         assertFalse(lines.removeComparisonsContaining(deletedFile));
     }
 }

@@ -57,7 +57,7 @@ public class ComparisonLine implements Comparable<ComparisonLine> {
 	}
 
 	public boolean isResultMax() {
-		return result != null && result.getSimilarite() >= Comparator.MAX_RESULT;
+		return result==null || result.getSimilarite() < Comparator.MAX_RESULT;
 	}
 
 	@Override

@@ -56,7 +56,7 @@ public class ContenuVideoComparator extends AbstractComparator {
             progress.setCurrentSubtask("Comparaison");
             for (ComparisonLine comparison : comparisons) {
                 progress.checkCancellation();
-                if (!comparison.isResultMax()) {
+                if (comparison.isResultMax()) {
                     try {
                         int valeur = compare(comparison.getFile1(), comparison.getFile2());
                         setResult(comparison, valeur);

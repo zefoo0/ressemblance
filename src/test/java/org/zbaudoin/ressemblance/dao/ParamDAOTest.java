@@ -23,7 +23,7 @@ public class ParamDAOTest {
 		Path path = Files.createTempFile("param-ressemblance", ".json");
 		path.toFile().deleteOnExit();
 		Param expected = new Param();
-		expected.setFiles(Arrays.asList(new File("photos").getAbsoluteFile()));
+		expected.setFiles(List.of(new File("photos").getAbsoluteFile()));
 		ResultTableState tableState = new ResultTableState();
 		tableState.setColumnOrder(Arrays.asList(ResultTableState.NAME1, ResultTableState.FILE1,
 				ResultTableState.FILE2, ResultTableState.SCORE, ResultTableState.NAME2,
@@ -57,7 +57,7 @@ public class ParamDAOTest {
 
 		Param actual = new ParamDAO(path.toFile()).load();
 
-		assertEquals(Arrays.asList(new File("photos")), actual.getFiles());
+		assertEquals(List.of(new File("photos")), actual.getFiles());
 		assertEquals(comparatorTypes(new Param()), comparatorTypes(actual));
 		assertEquals(new ResultTableState(), actual.getResultTableState());
 	}

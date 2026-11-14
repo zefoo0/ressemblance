@@ -64,19 +64,7 @@ public class RessemblanceProgressTest {
         Path directory = Files.createTempDirectory("ressemblance-progress-subtask");
         Path firstFile = Files.createFile(directory.resolve("first.txt"));
         Path secondFile = Files.createFile(directory.resolve("second.txt"));
-        RecordingComparator comparator = new RecordingComparator("*", 1, "Contenu vidéo",
-                new ArrayList<>()) {
-            @Override
-            public void compare(ComparisonLines comparisons, Progress progress) {
-                progress.setCurrentSubtask("Calcul des empreintes vidéo");
-                progress.plus();
-                progress.setCurrentSubtask("Comparaison des vidéos");
-                progress.plus();
-            }
-        };
-        Param param = new Param();
-        param.setFiles(Collections.singletonList(directory.toFile()));
-        param.setComparators(Collections.singletonList(comparator));
+        Param param = getParam(directory);
         List<String> operations = new ArrayList<>();
 
         try {
@@ -94,6 +82,23 @@ public class RessemblanceProgressTest {
             Files.deleteIfExists(secondFile);
             Files.deleteIfExists(directory);
         }
+    }
+
+    private static Param getParam(Path directory) {
+        RecordingComparator comparator = new RecordingComparator("*", 1, "Contenu vidéo",
+                new ArrayList<>()) {
+            @Override
+            public void compare(ComparisonLines comparisons, Progress progress) {
+                progress.setCurrentSubtask("Calcul des empreintes vidéo");
+                progress.plus();
+                progress.setCurrentSubtask("Comparaison des vidéos");
+                progress.plus();
+            }
+        };
+        Param param = new Param();
+        param.setFiles(Collections.singletonList(directory.toFile()));
+        param.setComparators(Collections.singletonList(comparator));
+        return param;
     }
 
     private static class RecordingComparator extends AbstractComparator {
