@@ -85,7 +85,7 @@ class ParamGUI {
                 String value = ((JTextField) getComponent()).getText().trim();
                 if (!isValidCoefficient(value)) {
                     JOptionPane.showMessageDialog(comparatorTable,
-                            "Le coefficient doit être un nombre positif fini.",
+                            "Le coefficient doit être un nombre compris entre 0 et 1 inclus.",
                             "Coefficient invalide", JOptionPane.WARNING_MESSAGE);
                     return false;
                 }
@@ -142,10 +142,10 @@ class ParamGUI {
                 .noneMatch(String::isEmpty);
     }
 
-    private static boolean isValidCoefficient(String value) {
+    static boolean isValidCoefficient(String value) {
         try {
             float coefficient = Float.parseFloat(value);
-            return Float.isFinite(coefficient) && coefficient >= 0;
+            return Float.isFinite(coefficient) && coefficient >= 0 && coefficient <= 1;
         } catch (NumberFormatException e) {
             return false;
         }
@@ -221,7 +221,7 @@ class ParamGUI {
                 comparator.setExtensions(parsedExtensions);
             } else if (columnIndex == 2) {
                 float coefficient = Float.parseFloat(String.valueOf(value).trim());
-                if (!Float.isFinite(coefficient) || coefficient < 0) {
+                if (!Float.isFinite(coefficient) || coefficient < 0 || coefficient > 1) {
                     return;
                 }
                 comparator.setCoefficient(coefficient);
