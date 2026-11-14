@@ -172,7 +172,7 @@ class RessemblanceGUI {
 			}
 		};
 		actRunStop.setEnabled(false);
-		actMonitorStart = new AbstractAction("Monitoring start") {
+		actMonitorStart = new AbstractAction("Start") {
 
 			@Override
 			public void actionPerformed(ActionEvent e) {
@@ -196,7 +196,7 @@ class RessemblanceGUI {
 		};
 		actMonitorStart.setEnabled(true);
 
-		actMonitorStop = new AbstractAction("Monitoring stop") {
+		actMonitorStop = new AbstractAction("Stop") {
 
 			@Override
 			public void actionPerformed(ActionEvent e) {
@@ -233,20 +233,18 @@ class RessemblanceGUI {
 		});
 		
 		JMenuBar bar = new JMenuBar();
-		JMenu menuFile = new JMenu("Configuration");
-		JMenu menuRun = new JMenu("Execution");
+		JMenu menuFile = new JMenu("Files");
+		JMenu menuMonitorig = new JMenu("Monitoring");
 		bar.add(menuFile);
-		bar.add(menuRun);
+		bar.add(menuMonitorig);
 		menuFile.add(actNew);
 		menuFile.add(actOpen);
 		menuFile.add(actSave);
 		menuFile.add(actSaveAs);
 		menuFile.add(new Separator());
 		menuFile.add(actExit);
-		menuRun.add(actRun);
-		menuRun.add(new Separator());
-		menuRun.add(actMonitorStart);
-		menuRun.add(actMonitorStop);
+		menuMonitorig.add(actMonitorStart);
+		menuMonitorig.add(actMonitorStop);
 
 		fr.setJMenuBar(bar);
 		fr.getContentPane().add(tbPane, BorderLayout.CENTER);
@@ -257,6 +255,7 @@ class RessemblanceGUI {
 		runProgress = new JProgressBar(0, 100);
 		runProgress.setStringPainted(true);
 		runProgress.setString("En attente");
+		paProgress.add(new JButton(actRun), BorderLayout.WEST);
 		paProgress.add(runProgress, BorderLayout.CENTER);
 		paProgress.add(new JButton(actRunStop), BorderLayout.EAST);
 		fr.getContentPane().add(paProgress, BorderLayout.SOUTH);

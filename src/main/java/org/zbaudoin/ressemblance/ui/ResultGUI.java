@@ -2,6 +2,7 @@ package org.zbaudoin.ressemblance.ui;
 
 import java.awt.*;
 import java.awt.event.*;
+import java.awt.datatransfer.StringSelection;
 import java.io.*;
 import java.util.*;
 import java.util.List;
@@ -434,38 +435,6 @@ public class ResultGUI {
 
 	private void initPopupMenu(final JTable ta) {
 		JPopupMenu popup = new JPopupMenu();
-		popup.add(new AbstractAction("Run") {
-			private static final long serialVersionUID = 1L;
-
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				File file = getSelectedFile(ta);
-				if (file != null) {
-					try {
-						Desktop.getDesktop().open(file);
-					} catch (IOException ex) {
-						ex.printStackTrace();
-					}
-				}
-			}
-		});
-
-		popup.add(new AbstractAction("Open Directory") {
-			private static final long serialVersionUID = 1L;
-
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				File file = getSelectedFile(ta);
-				if (file != null && file.getParentFile() != null) {
-					try {
-						Desktop.getDesktop().browse(file.getParentFile().toURI());
-					} catch (IOException ex) {
-						ex.printStackTrace();
-					}
-				}
-			}
-		});
-
 		popup.add(new AbstractAction("Isolate") {
 			private static final long serialVersionUID = 1L;
 
@@ -479,14 +448,21 @@ public class ResultGUI {
 			}
 		});
 
-		popup.add(new AbstractAction("Afficher les erreurs") {
+		popup.add(new AbstractAction("Open file 1") {
 			private static final long serialVersionUID = 1L;
 
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				if (ta.getSelectedRow() >= 0) {
-					showComparisonErrors(ta.getSelectedRow());
-				}
+				openFile(getFileAtSelectedRow(ta, ResultTableState.FILE1));
+			}
+		});
+
+		popup.add(new AbstractAction("Open file 2") {
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				openFile(getFileAtSelectedRow(ta, ResultTableState.FILE2));
 			}
 		});
 
@@ -498,6 +474,7 @@ public class ResultGUI {
 				deleteSelectedFiles(ta, ResultTableState.FILE1, "Delete files A ?");
 			}
 		});
+
 		popup.add(new AbstractAction("Delete file 2") {
 			private static final long serialVersionUID = 1L;
 
@@ -506,18 +483,101 @@ public class ResultGUI {
 				deleteSelectedFiles(ta, ResultTableState.FILE2, "Delete files B ?");
 			}
 		});
+
+		JMenuItem openDirectory1 = new JMenuItem("Open directory");
+		openDirectory1.addActionListener(e ->
+				openDirectory(getFileAtSelectedRow(ta, ResultTableState.FILE1)));
+		popup.add(openDirectory1);
+
+		JMenuItem openDirectory2 = new JMenuItem("Open directory 2");
+		openDirectory2.addActionListener(e ->
+				openDirectory(getFileAtSelectedRow(ta, ResultTableState.FILE2)));
+		popup.add(openDirectory2);
+
+		popup.addSeparator();
+
+		popup.add(new AbstractAction("Copy cell") {
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				int row = ta.getSelectedRow();
+				int column = ta.getSelectedColumn();
+				if (row >= 0 && column >= 0) {
+					Object value = ta.getValueAt(row, column);
+					TableCellRenderer renderer = ta.getCellRenderer(row, column);
+					Component rendered = renderer.getTableCellRendererComponent(
+							ta, value, false, false, row, column);
+					String text = rendered instanceof JLabel
+							? ((JLabel) rendered).getText()
+							: String.valueOf(value);
+					Toolkit.getDefaultToolkit().getSystemClipboard()
+							.setContents(new StringSelection(text == null ? "" : text), null);
+				}
+			}
+		});
+
+		JMenuItem showErrors = new JMenuItem("Afficher les erreurs");
+		showErrors.addActionListener(e -> {
+			int row = ta.getSelectedRow();
+			if (row >= 0) {
+				showComparisonErrors(row);
+			}
+		});
+		popup.add(showErrors);
+		popup.addPopupMenuListener(new PopupMenuListener() {
+			@Override
+			public void popupMenuWillBecomeVisible(PopupMenuEvent e) {
+				int row = ta.getSelectedRow();
+				ComparisonLine line = row < 0 ? null
+						: comparisonLines.get(ta.convertRowIndexToModel(row));
+				showErrors.setEnabled(line != null && !line.getErreurs().isEmpty());
+
+				File file1 = line == null ? null : line.getFile1();
+				File file2 = line == null ? null : line.getFile2();
+				File directory1 = file1 == null ? null : file1.getParentFile();
+				File directory2 = file2 == null ? null : file2.getParentFile();
+				boolean differentDirectories = directory1 != null && directory2 != null
+						&& !directory1.getAbsoluteFile().toPath().normalize()
+								.equals(directory2.getAbsoluteFile().toPath().normalize());
+				openDirectory1.setText(differentDirectories ? "Open directory 1" : "Open directory");
+				openDirectory1.setEnabled(directory1 != null);
+				openDirectory2.setVisible(differentDirectories);
+				openDirectory2.setEnabled(differentDirectories);
+			}
+
+			@Override
+			public void popupMenuWillBecomeInvisible(PopupMenuEvent e) { }
+
+			@Override
+			public void popupMenuCanceled(PopupMenuEvent e) { }
+		});
 		ta.setComponentPopupMenu(popup);
 	}
 
-	private File getSelectedFile(JTable ta) {
+	private File getFileAtSelectedRow(JTable ta, String id) {
 		int row = ta.getSelectedRow();
-		int column = ta.getSelectedColumn();
-		if (row < 0 || column < 0) {
-			return null;
+		return row < 0 ? null : getFileAtViewRow(ta, row, id);
+	}
+
+	private void openFile(File file) {
+		if (file != null) {
+			try {
+				Desktop.getDesktop().open(file);
+			} catch (IOException ex) {
+				ex.printStackTrace();
+			}
 		}
-		int modelColumn = ta.convertColumnIndexToModel(column);
-		Object value = model.getValueAt(ta.convertRowIndexToModel(row), modelColumn);
-		return value instanceof File ? (File) value : null;
+	}
+
+	private void openDirectory(File file) {
+		if (file != null && file.getParentFile() != null) {
+			try {
+				Desktop.getDesktop().browse(file.getParentFile().toURI());
+			} catch (IOException ex) {
+				ex.printStackTrace();
+			}
+		}
 	}
 
 	private File getFileAtViewRow(JTable ta, int viewRow, String id) {
