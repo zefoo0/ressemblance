@@ -2,70 +2,103 @@
 
 ## Présentation
 
-Ressemblance est une application de bureau Java (interface Swing) qui recherche des fichiers susceptibles d’être des doublons ou de porter des noms proches. Elle permet de comparer des répertoires, de consulter les paires détectées et de gérer les fichiers depuis les résultats. Un mode de surveillance peut également analyser périodiquement un répertoire et supprimer automatiquement certains fichiers qui s’y trouvent.
+Ressemblance est une application Java Swing destinée à repérer des fichiers dupliqués, quasi dupliqués ou visuellement proches dans un ou plusieurs répertoires. Elle compare récursivement les fichiers d’un ensemble de dossiers racines, affiche les paires les plus probables et propose des actions sur les résultats (ouverture, suppression, analyse détaillée). Un mode de surveillance permet aussi de supprimer automatiquement des fichiers dans un dossier surveillé lorsqu’ils correspondent à des doublons selon un seuil défini.
 
-## Comparaison de fichiers
+## Interface principale
 
-### Choisir les répertoires et les règles
+La fenêtre principale expose deux volets :
 
-La fenêtre principale présente trois zones éditables :
+- un panneau de configuration, intitulé `Paramètres`,
+- un panneau de résultats, qui affiche la liste des paires comparées lorsque l’analyse est lancée.
 
-- **File** : liste des répertoires racines à analyser, un chemin par ligne. Le bouton **Add file** ouvre en pratique un sélecteur de répertoire.
-- **Separator** : séparateurs utilisés pour découper les noms de fichiers en mots.
-- **Exclude** : mots à ignorer lors de la comparaison des noms.
+Dans le panneau de configuration, l’utilisateur renseigne :
 
-Les sous-répertoires des racines sont parcourus récursivement. Seuls les fichiers sont comparés ; un chemin qui n’est pas un répertoire n’ajoute pas de fichiers à l’analyse.
+- `Dossiers racine` : un ou plusieurs chemins de répertoire, un chemin par ligne ; les sous-répertoires sont parcourus récursivement ;
+- une table `Comparateurs` avec les colonnes `Comparateur`, `Extensions` et `Coefficient` ;
+- le bouton `Add Directory` pour choisir un dossier et l’ajouter à la liste.
 
-Par défaut, les séparateurs comprennent le point, le souligné, le tiret, les espaces et la virgule. Les mots exclus par défaut incluent notamment des variantes de « James Bond » et des extensions vidéo courantes. Les noms sont convertis en majuscules avant comparaison.
+Les comparateurs sont paramétrables individuellement. Le coefficient permet de pondérer le résultat d’un comparateur dans le score final. Le filtrage par extension permet de n’appliquer un comparateur qu’à certains types de fichiers. Le joker `*` signifie : toutes les extensions.
 
-### Lancer une analyse
+## Comparateurs disponibles
 
-L’action **Run** compare chaque paire de fichiers trouvée dans les répertoires configurés. Les fichiers sont traités dans l’ordre des répertoires configurés ; pour une paire issue de deux répertoires différents, celui configuré en premier reste dans la colonne **Fichier 1**. Les résultats sont triés du score le plus élevé au plus faible et affichés dans une fenêtre sous forme de tableau : les deux fichiers comparés et leur niveau de ressemblance. Aucun tableau n’est ouvert lorsqu’aucune paire n’est retenue.
+La configuration par défaut contient quatre comparateurs :
 
-Le score combine deux signaux :
+1. `Fichier` : compare le contenu des fichiers à l’aide d’un hash SHA-1 ; si deux fichiers ont la même taille et la même empreinte, le score vaut `100`.
+2. `Contenu image` : s’applique aux images JPEG, JPG, PNG, GIF, BMP, TIFF, TIF, WBMP ; utilise une comparaison visuelle basée sur des empreintes d’images.
+3. `Contenu vidéo` : s’applique aux vidéos AVI, MOV, FLV, WMV, MP4, MPG ; extrait des fichiers vidéo des empreintes et les compare.
+4. `Nom de fichier` : s’applique à tous les fichiers ; compare les noms sans extension avec la distance de Jaro-Winkler.
 
-1. **Contenu identique** : lorsque deux fichiers ont la même taille et le même empreinte SHA-1, la paire reçoit le score spécial **9999**.
-2. **Nom et taille** : sinon, chaque mot du nom du premier fichier présent dans celui du second ajoute 10 points. Un petit bonus (de 0 à 9 points) favorise les tailles proches.
+Le score retenu pour une paire est celui du meilleur comparateur qui a produit un résultat après application du coefficient. Les valeurs de similarité sont exprimées sur une échelle de `0` à `100`.
 
-Le score reflète donc principalement la similarité des noms ; le contenu n’est vérifié que pour reconnaître des fichiers identiques de même taille. Ce mécanisme ne constitue pas une comparaison sémantique du contenu.
+## Analyse des fichiers
 
-### Actions sur les résultats
+L’action `Run` lance une comparaison entre toutes les paires de fichiers issues des répertoires racines. Les fichiers sont d’abord collectés récursivement, dédupliqués par chemin, puis triés. Chaque paire est comparée selon les comparateurs actifs et les extensions autorisées.
 
-Le menu contextuel du tableau propose :
+Le moteur de comparaison :
 
-- **Run** : ouvrir le fichier sélectionné avec l’application associée au système.
-- **Open Directory** : ouvrir le répertoire parent du fichier.
-- **Isolate** : placer temporairement des liens vers les deux fichiers dans un répertoire de travail afin de les examiner, puis choisir éventuellement lequel supprimer.
-- **Delete A** ou **Delete B** : supprimer, après confirmation, le fichier correspondant pour chacune des lignes sélectionnées.
+- ignore les chemins non répertoires ;
+- traite les fichiers comme des paires uniques `A/B` sans redondance ;
+- applique les comparateurs qui acceptent le type de fichier ;
+- conserve uniquement le meilleur score pour chaque paire.
 
-Les suppressions effectuées depuis ces actions sont directes. Elles ne passent pas par la corbeille et ne sont pas annulables par l’application.
+Les lignes de résultats sont ensuite triées par score décroissant. Si aucune paire ne donne un résultat pertinent, la table peut rester vide et aucun tableau n’est ouvert.
+
+## Tableau des résultats
+
+Le tableau affiche, pour chaque ligne, au moins :
+
+- `Fichier 1` et `Fichier 2` : les deux chemins concernés ;
+- le score de similarité (`similarité` ou colonne équivalente selon l’affichage) ;
+- éventuellement des informations de diagnostic ou d’erreur de comparaison.
+
+Le menu contextuel du tableau propose des actions sur les fichiers sélectionnés :
+
+- `Open file 1` / `Open file 2` : ouvrir le fichier avec l’application système associée ;
+- `Delete file 1` / `Delete file 2` : supprimer un ou plusieurs fichiers sélectionnés après confirmation ;
+- `Open directory` / `Open directory 1` / `Open directory 2` : ouvrir le dossier parent du fichier ;
+- `Isolate` : préparer une isolation des fichiers sélectionnés dans un dossier de travail pour comparaison manuelle ;
+- `Copy cell` : copier la valeur de la cellule sélectionnée dans le presse-papiers ;
+- `Afficher les erreurs` : afficher les détails d’erreurs survenues pendant la comparaison, si disponibles.
+
+Les suppressions exécutées depuis l’interface sont définitives : elles ne passent pas par la corbeille et ne sont pas annulées dans l’application.
 
 ## Gestion des configurations
 
-Les actions du menu **Configuration** permettent de créer une configuration (**New**), d’en ouvrir une (**Open**), de l’enregistrer (**Save**) ou de l’enregistrer sous un autre fichier (**Save as**). Une configuration contient les paramètres courants et est enregistrée sous forme de fichier JSON.
+Le menu `Files` propose :
 
-Tant qu’une configuration n’a pas été enregistrée dans un fichier, ses modifications sont conservées dans les préférences utilisateur et restaurées au prochain démarrage. L’ouverture d’un fichier de configuration remplace cette configuration de session ; l’enregistrement réussi dans un fichier supprime la copie de session.
+- `New` : créer une nouvelle configuration vide ;
+- `Open` : ouvrir une configuration depuis un fichier JSON ;
+- `Save` : enregistrer la configuration actuelle ;
+- `Save as` : enregistrer sous un autre nom ;
+- `Quit` : fermer l’application.
 
-Les derniers emplacements utilisés pour sélectionner des répertoires et des fichiers sont mémorisés dans les préférences utilisateur.
+Une configuration contient les dossiers racines et les paramètres des comparateurs. Tant qu’elle n’a pas été enregistrée dans un fichier, ses valeurs peuvent rester conservées dans les préférences utilisateur et être restaurées au prochain démarrage. L’ouverture d’un fichier JSON remplace la configuration active, et l’enregistrement dans un fichier supprime la version de session en mémoire.
+
+Les répertoires sélectionnés récemment sont mémorisés pour faciliter la reprise de l’utilisateur.
 
 ## Surveillance périodique
 
-L’action **Monitoring start** ouvre une boîte de dialogue permettant de définir :
+Le menu `Monitoring` propose :
 
-- le répertoire racine à surveiller ;
-- un seuil numérique (**Offset**) à partir duquel une paire est considérée pour le traitement.
+- `Start` : démarrer la surveillance d’un répertoire donné ;
+- `Stop` : arrêter la surveillance active.
 
-Le répertoire doit exister et le seuil doit être numérique. La valeur initiale proposée pour le seuil est **9999**, soit le niveau attribué aux fichiers ayant même taille et même empreinte.
+La boîte de configuration de surveillance demande :
 
-Une fois démarrée, la surveillance relance une analyse après un délai initial d’environ 2 secondes, puis toutes les 5 minutes. Chaque analyse combine le répertoire surveillé avec les racines de la configuration courante. Pour les paires dont le score atteint le seuil, si l’un des fichiers se trouve dans le répertoire surveillé et que les deux fichiers existent, le fichier surveillé est supprimé.
+- le `répertoire à surveiller` ;
+- un seuil numérique `Offset` : une paire n’est considérée que si son score atteint ou dépasse ce seuil.
 
-Avant la suppression, l’application tente de créer dans le répertoire du fichier un fichier marqueur nommé `__deleted-file__<nom-du-fichier>.txt`. Ce marqueur indique le chemin de l’autre fichier et la date de suppression. Les événements et erreurs de surveillance sont visibles dans une console dédiée. **La surveillance peut supprimer des fichiers sans confirmation interactive** : vérifier le répertoire et le seuil avant de la démarrer.
+La surveillance démarre après un délai initial d’environ 2 secondes, puis relance une analyse toutes les 5 minutes. L’analyse combine le répertoire surveillé avec les dossiers racines de la configuration actuelle. Pour chaque paire de fichiers ayant un score supérieur ou égal au seuil :
 
-**Monitoring stop** arrête les analyses périodiques et ferme la console de suivi.
+- si l’un des fichiers est dans le dossier surveillé et si les deux fichiers existent encore, le fichier du dossier surveillé est supprimé ;
+- avant la suppression, l’application écrit un marqueur nommé `__deleted-file__<nom-du-fichier>.txt` dans le dossier du fichier supprimé ;
+- le fichier marqueur contient le chemin du fichier correspondant et la date de suppression.
 
-## Résumé des précautions
+Les logs et événements de surveillance sont affichés dans une console dédiée. La surveillance peut supprimer des fichiers automatiquement sans confirmation interactive : il faut donc vérifier le dossier ciblé et le seuil avant de la lancer.
 
-- Vérifier soigneusement les répertoires et les règles avant une analyse.
-- Examiner les résultats avant d’utiliser **Delete A**, **Delete B** ou **Isolate**.
-- Utiliser la surveillance avec prudence : elle peut supprimer automatiquement un fichier présent dans le répertoire surveillé.
-- Les fichiers supprimés ne sont pas récupérables via l’application ; le fichier marqueur est une trace, pas une sauvegarde.
+## Précautions d’utilisation
+
+- Vérifier les dossiers racines et les comparateurs avant d’exécuter une analyse.
+- Contrôler les résultats avant d’utiliser les actions de suppression ou d’isolation.
+- Utiliser la surveillance avec prudence : le mode automatique peut effacer des fichiers sans validation de l’utilisateur.
+- Les suppressions sont définitives et la trace laissée par le fichier marqueur ne constitue pas une restauration automatique.
