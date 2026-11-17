@@ -30,7 +30,7 @@ public class FileComparisonService {
 
 		List<File> dirs = param.getFiles();
 		if (!dirs.isEmpty()) {
-			Set<File> files = collecterFichiers(dirs);
+			List<File> files = collecterFichiers(dirs);
 			List<FileComparison> comparisonLines = peuplerComparaisonLine(files);
 			result = process(comparisonLines, progressListener, cancellationRequested);
 			Collections.sort(result);
@@ -42,16 +42,18 @@ public class FileComparisonService {
 		return result;
 	}
 	
-	private Set<File> collecterFichiers(List<File> rootDirs) {
-		Set<File> files = new HashSet<>();
+	private List<File> collecterFichiers(List<File> rootDirs) {
+		Set<File> uniqueFiles = new LinkedHashSet<>();
         for (File dir : rootDirs) {
-            addFiles(files, dir);
+            List<File> rootFiles = new ArrayList<>();
+            addFiles(rootFiles, dir);
+            rootFiles.sort(Comparator.comparing(File::getAbsolutePath));
+            uniqueFiles.addAll(rootFiles);
         }
-		
-		return files;
+		return new ArrayList<>(uniqueFiles);
 	}
 	
-	private void addFiles(Set<File> files, File dir) {
+	private void addFiles(List<File> files, File dir) {
 		if (!dir.isDirectory()) return;
 		
 		File[] files0 = dir.listFiles();
@@ -92,10 +94,9 @@ public class FileComparisonService {
 		return comparisonLines;
 	}
 
-	private List<FileComparison> peuplerComparaisonLine(Set<File> files0) {
+	private List<FileComparison> peuplerComparaisonLine(List<File> files) {
 		List<FileComparison> result = new ArrayList<>();
 
-		List<File> files = new ArrayList<>(files0);
 		for (int n = 0; n < files.size(); n++) {
 			File f1= files.get(n);
 			for (int m = n+1; m < files.size(); m++) {

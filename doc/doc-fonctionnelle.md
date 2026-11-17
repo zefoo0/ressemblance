@@ -20,7 +20,7 @@ Par défaut, les séparateurs comprennent le point, le souligné, le tiret, les 
 
 ### Lancer une analyse
 
-L’action **Run** compare chaque paire de fichiers trouvée dans les répertoires configurés. Les résultats sont triés du score le plus élevé au plus faible et affichés dans une fenêtre sous forme de tableau : les deux fichiers comparés et leur niveau de ressemblance. Aucun tableau n’est ouvert lorsqu’aucune paire n’est retenue.
+L’action **Run** compare chaque paire de fichiers trouvée dans les répertoires configurés. Les fichiers sont traités dans l’ordre des répertoires configurés ; pour une paire issue de deux répertoires différents, celui configuré en premier reste dans la colonne **Fichier 1**. Les résultats sont triés du score le plus élevé au plus faible et affichés dans une fenêtre sous forme de tableau : les deux fichiers comparés et leur niveau de ressemblance. Aucun tableau n’est ouvert lorsqu’aucune paire n’est retenue.
 
 Le score combine deux signaux :
 
