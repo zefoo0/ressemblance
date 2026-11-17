@@ -1,6 +1,5 @@
 package org.zbaudoin.filesimilarity.ui;
 
-import org.zbaudoin.filesimilarity.application.monitoring.Monitoring;
 import org.zbaudoin.filesimilarity.domain.monitoring.MonitoringConfig;
 
 import java.awt.*;

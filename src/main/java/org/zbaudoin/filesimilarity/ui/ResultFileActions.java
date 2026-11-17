@@ -185,7 +185,7 @@ final class ResultFileActions {
             try {
                 Desktop.getDesktop().open(file);
             } catch (IOException ex) {
-                ex.printStackTrace();
+                showException("Impossible d'ouvrir le fichier", ex);
             }
         }
     }
@@ -195,7 +195,7 @@ final class ResultFileActions {
             try {
                 Desktop.getDesktop().browse(file.getParentFile().toURI());
             } catch (IOException ex) {
-                ex.printStackTrace();
+                showException("Impossible d'ouvrir le répertoire", ex);
             }
         }
     }
@@ -259,11 +259,23 @@ final class ResultFileActions {
         }
         writer.flush();
 
-        JTextArea details = new JTextArea(text.toString(), 20, 80);
+        showStackTrace(table, "Erreurs de comparaison", text.toString());
+    }
+
+    private void showException(String title, Exception exception) {
+        StringWriter text = new StringWriter();
+        PrintWriter writer = new PrintWriter(text);
+        exception.printStackTrace(writer);
+        writer.flush();
+        showStackTrace(null, title, text.toString());
+    }
+
+    private void showStackTrace(Component parent, String title, String stackTrace) {
+        JTextArea details = new JTextArea(stackTrace, 20, 80);
         details.setEditable(false);
         details.setCaretPosition(0);
-        JOptionPane.showMessageDialog(table, new JScrollPane(details),
-                "Erreurs de comparaison", JOptionPane.ERROR_MESSAGE);
+        JOptionPane.showMessageDialog(parent, new JScrollPane(details),
+                title, JOptionPane.ERROR_MESSAGE);
     }
 
     private void isolate(File file1, File file2) {
@@ -285,12 +297,12 @@ final class ResultFileActions {
             new ProcessBuilder("ln", "-s", file1.getAbsolutePath(), link1.getAbsolutePath()).start();
             new ProcessBuilder("ln", "-s", file2.getAbsolutePath(), link2.getAbsolutePath()).start();
         } catch (IOException ex) {
-            ex.printStackTrace();
+            showException("Impossible de créer les liens symboliques", ex);
         }
         try {
             Desktop.getDesktop().browse(directory.toURI());
         } catch (IOException ex) {
-            ex.printStackTrace();
+            showException("Impossible d'ouvrir le répertoire", ex);
         }
 
         JRadioButton rb1 = new JRadioButton(link1.getName());

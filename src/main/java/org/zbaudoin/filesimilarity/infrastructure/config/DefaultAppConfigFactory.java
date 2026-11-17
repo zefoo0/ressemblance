@@ -15,7 +15,7 @@ public final class DefaultAppConfigFactory {
 
     public static AppConfig create() {
         AppConfig config = new AppConfig();
-        config.setComparators(Arrays.<ComparisonStrategy>asList(
+        config.setComparators(Arrays.asList(
                 new FileContentComparisonStrategy(),
                 new ImageContentComparisonStrategy(),
                 new VideoContentComparisonStrategy(),

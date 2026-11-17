@@ -1,7 +1,5 @@
 package org.zbaudoin.filesimilarity.ui;
 
-import org.zbaudoin.filesimilarity.domain.config.ResultTableState;
-
 
 import org.junit.Test;
 import org.zbaudoin.filesimilarity.domain.config.ResultTableState;

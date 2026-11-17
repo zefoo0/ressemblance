@@ -1,6 +1,5 @@
 package org.zbaudoin.filesimilarity.ui;
 
-import org.zbaudoin.filesimilarity.domain.config.ResultTableState;
 import org.zbaudoin.filesimilarity.application.comparison.FileComparisonService;
 import org.zbaudoin.filesimilarity.application.monitoring.Monitoring;
 import org.zbaudoin.filesimilarity.domain.comparison.FileComparison;
